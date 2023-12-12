@@ -43,18 +43,14 @@ def fuse_airspeed(v_local, state, P, airspeed, R, epsilon):
         v_local = v_local.reshape((3, 1))
     elif v_local.shape != (3, 1):
         raise IndexError(
-            "v_local is expected to have shape (3, 1) or (3,); instead had shape {}".format(
-                v_local.shape
-            )
+            f"v_local is expected to have shape (3, 1) or (3,); instead had shape {v_local.shape}"
         )
 
     if state.shape == (3,):
         state = state.reshape((3, 1))
     elif state.shape != (3, 1):
         raise IndexError(
-            "state is expected to have shape (3, 1) or (3,); instead had shape {}".format(
-                state.shape
-            )
+            f"state is expected to have shape (3, 1) or (3,); instead had shape {state.shape}"
         )
 
     # Intermediate terms (11)

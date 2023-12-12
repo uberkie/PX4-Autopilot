@@ -69,7 +69,7 @@ def do_param_set_cmd(port_url, baudrate, param_name, param_value):
     timeout_start = time.monotonic()
     timeout = 10  # 10 seconds
 
-    cmd = "param set " + param_name + " " + param_value
+    cmd = f"param set {param_name} {param_value}"
 
     # write command (param set) and wait for command echo
     print("Running command: \'{0}\'".format(cmd))
@@ -84,23 +84,23 @@ def do_param_set_cmd(port_url, baudrate, param_name, param_value):
             if cmd in serial_line:
                 break
 
-            print_line(serial_line)
+            else:
+                print_line(serial_line)
 
-        else:
-            if time.monotonic() > timeout_start + timeout:
-                print("Error, timeout waiting for command echo")
-                break
+        elif time.monotonic() > timeout_start + timeout:
+            print("Error, timeout waiting for command echo")
+            break
 
     # clear
     ser.reset_input_buffer()
 
     # verify param value
-    cmd = "param show " + param_name
+    cmd = f"param show {param_name}"
     print("Running command: \'{0}\'".format(cmd))
     serial_cmd = '{0}\n'.format(cmd)
     ser.write(serial_cmd.encode("ascii"))
 
-    param_show_response = param_name + " ["
+    param_show_response = f"{param_name} ["
 
     timeout_start = time.monotonic()
     timeout = 3  # 3 seconds
@@ -118,16 +118,12 @@ def do_param_set_cmd(port_url, baudrate, param_name, param_value):
                     sys.exit(0)
                 else:
                     sys.exit(1)
-            else:
-                if time.monotonic() > timeout_start + timeout:
-                    if "nsh>" in serial_line:
-                        sys.exit(1) # error, command didn't complete successfully
-                    elif "NuttShell (NSH)" in serial_line:
-                        sys.exit(1) # error, command didn't complete successfully
-        else:
-            if time.monotonic() > timeout_start + timeout:
-                print("Error, timeout")
-                sys.exit(-1)
+            elif time.monotonic() > timeout_start + timeout:
+                if "nsh>" in serial_line or "NuttShell (NSH)" in serial_line:
+                    sys.exit(1) # error, command didn't complete successfully
+        elif time.monotonic() > timeout_start + timeout:
+            print("Error, timeout")
+            sys.exit(-1)
 
 
 def main():

@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 """ Script to validate YAML file(s) against a YAML schema file """
 
+
 from __future__ import print_function
 
 import argparse
@@ -9,7 +10,7 @@ import sys
 try:
     import yaml
 except ImportError as e:
-    print("Failed to import yaml: " + str(e))
+    print(f"Failed to import yaml: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user pyyaml")
@@ -19,7 +20,7 @@ except ImportError as e:
 try:
     import cerberus
 except ImportError as e:
-    print("Failed to import cerberus: " + str(e))
+    print(f"Failed to import cerberus: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user cerberus")

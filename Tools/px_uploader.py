@@ -70,7 +70,7 @@ from sys import platform as _platform
 try:
     import serial
 except ImportError as e:
-    print("Failed to import serial: " + str(e))
+    print(f"Failed to import serial: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user pyserial")
@@ -141,11 +141,8 @@ class firmware(object):
 
     def __init__(self, path):
 
-        # read the file
-        f = open(path, "r")
-        self.desc = json.load(f)
-        f.close()
-
+        with open(path, "r") as f:
+            self.desc = json.load(f)
         self.image = bytearray(zlib.decompress(base64.b64decode(self.desc['image'])))
 
         # pad image to 4-byte length
@@ -162,8 +159,8 @@ class firmware(object):
         return state
 
     def crc(self, padlen):
-        state = self.__crc32(self.image, int(0))
-        for i in range(len(self.image), (padlen - 1), 4):
+        state = self.__crc32(self.image, 0)
+        for _ in range(len(self.image), (padlen - 1), 4):
             state = self.__crc32(self.crcpad, state)
         return state
 
@@ -252,17 +249,16 @@ class uploader(object):
             except AttributeError:
                 portopen = self.port.isOpen()
 
-            if not portopen and _time() < timeout:
-                try:
-                    self.port.open()
-                except OSError:
-                    # wait for the port to be ready
-                    time.sleep(0.04)
-                except serial.SerialException:
-                    # if open fails, try again later
-                    time.sleep(0.04)
-            else:
+            if portopen or _time() >= timeout:
                 break
+            try:
+                self.port.open()
+            except OSError:
+                # wait for the port to be ready
+                time.sleep(0.04)
+            except serial.SerialException:
+                # if open fails, try again later
+                time.sleep(0.04)
 
     # debugging code
     def __probe(self, state):
@@ -290,7 +286,7 @@ class uploader(object):
             self.port.flush()
         c = bytes(self.__recv())
         if c != self.INSYNC:
-            raise RuntimeError("unexpected %s instead of INSYNC" % c)
+            raise RuntimeError(f"unexpected {c} instead of INSYNC")
         c = self.__recv()
         if c == self.INVALID:
             raise RuntimeError("bootloader reports INVALID OPERATION")
@@ -303,19 +299,20 @@ class uploader(object):
     # This will validate all the SYNC,<results> for a window of programing
     # in about 13.81 Ms for 256 blocks written
     def __ackSyncWindow(self, count):
-        if (count > 0):
-            data =  bytearray(bytes(self.__recv(count)))
-            if (len(data) != count):
-                raise RuntimeError("Ack Window %i not %i " % (len(data), count))
-            for i in range(0, len(data), 2):
-                if bytes([data[i]]) != self.INSYNC:
-                    raise RuntimeError("unexpected %s instead of INSYNC" % data[i])
-                if bytes([data[i+1]]) == self.INVALID:
-                    raise RuntimeError("bootloader reports INVALID OPERATION")
-                if bytes([data[i+1]]) == self.FAILED:
-                    raise RuntimeError("bootloader reports OPERATION FAILED")
-                if bytes([data[i+1]]) != self.OK:
-                    raise RuntimeError("unexpected response 0x%x instead of OK" % ord(data[i+1]))
+        if count <= 0:
+            return
+        data =  bytearray(bytes(self.__recv(count)))
+        if (len(data) != count):
+            raise RuntimeError("Ack Window %i not %i " % (len(data), count))
+        for i in range(0, len(data), 2):
+            if bytes([data[i]]) != self.INSYNC:
+                raise RuntimeError(f"unexpected {data[i]} instead of INSYNC")
+            if bytes([data[i+1]]) == self.INVALID:
+                raise RuntimeError("bootloader reports INVALID OPERATION")
+            if bytes([data[i+1]]) == self.FAILED:
+                raise RuntimeError("bootloader reports OPERATION FAILED")
+            if bytes([data[i+1]]) != self.OK:
+                raise RuntimeError("unexpected response 0x%x instead of OK" % ord(data[i+1]))
 
     # attempt to get back into sync with the bootloader
     def __sync(self):
@@ -336,11 +333,7 @@ class uploader(object):
             c = self.__recv()
             if (c == self.BAD_SILICON_REV):
                 raise NotImplementedError()
-            if (c != self.OK):
-                # print("unexpected 0x%x instead of OK" % ord(c))
-                return False
-            return True
-
+            return c == self.OK
         except NotImplementedError:
             raise RuntimeError("Programing not supported for this version of silicon!\n"
                                "See https://docs.px4.io/main/en/flight_controller/silicon_errata.html")
@@ -357,7 +350,7 @@ class uploader(object):
             self.port.baudrate = self.baudrate_bootloader * 2.33
         except NotImplementedError as e:
             # This error can occur because pySerial on Windows does not support odd baudrates
-            print(str(e) + " -> could not check for FTDI device, assuming USB connection")
+            print(f"{str(e)} -> could not check for FTDI device, assuming USB connection")
             return
 
         self.__send(uploader.GET_SYNC +
@@ -407,8 +400,7 @@ class uploader(object):
         length = self.__recv_int()
         value = self.__recv(length)
         self.__getSync()
-        pieces = value.split(b",")
-        return pieces
+        return value.split(b",")
 
     def __drawProgressBar(self, label, progress, maxVal):
         if maxVal < progress:
@@ -421,16 +413,16 @@ class uploader(object):
 
     # send the CHIP_ERASE command and wait for the bootloader to become ready
     def __erase(self, label):
-        print("Windowed mode: %s" % self.ackWindowedMode)
+        print(f"Windowed mode: {self.ackWindowedMode}")
         print("\n", end='')
         self.__send(uploader.CHIP_ERASE +
                     uploader.EOC)
 
         # erase is very slow, give it 30s
         deadline = _time() + 30.0
+        usualEraseDuration = 15.0
         while _time() < deadline:
 
-            usualEraseDuration = 15.0
             estimatedTimeRemaining = deadline-_time()
             if estimatedTimeRemaining >= usualEraseDuration:
                 self.__drawProgressBar(label, 30.0-estimatedTimeRemaining, usualEraseDuration)
@@ -477,8 +469,8 @@ class uploader(object):
         self.port.flush()
         programmed = self.__recv(len(data))
         if programmed != data:
-            print("got    " + binascii.hexlify(programmed))
-            print("expect " + binascii.hexlify(data))
+            print(f"got    {binascii.hexlify(programmed)}")
+            print(f"expect {binascii.hexlify(data)}")
             return False
         self.__getSync()
         return True
@@ -505,15 +497,12 @@ class uploader(object):
         groups = self.__split_len(code, uploader.PROG_MULTI_MAX)
         # Give imedate feedback
         self.__drawProgressBar(label, 0, len(groups))
-        uploadProgress = 0
-        for bytes in groups:
+        for uploadProgress, bytes in enumerate(groups, start=1):
             self.__program_multi(bytes, self.ackWindowedMode)
             # If in Window mode, extend the window size for the __ackSyncWindow
             if self.ackWindowedMode:
                 self.window += self.window_per
 
-            # Print upload progress (throttled, so it does not delay upload progress)
-            uploadProgress += 1
             if uploadProgress % 256 == 0:
                 self.__probe(True)
                 self.__probe(False)
@@ -536,9 +525,7 @@ class uploader(object):
         self.__getSync()
         code = fw.image
         groups = self.__split_len(code, uploader.READ_MULTI_MAX)
-        verifyProgress = 0
-        for bytes in groups:
-            verifyProgress += 1
+        for verifyProgress, bytes in enumerate(groups, start=1):
             if verifyProgress % 256 == 0:
                 self.__drawProgressBar(label, verifyProgress, len(groups))
             if (not self.__verify_multi(bytes)):
@@ -588,21 +575,21 @@ class uploader(object):
         for file in fw_list:
             fw = firmware(file)
             if self.board_type == fw.property('board_id'):
-                if len(fw_list) > 1: print("using firmware binary {}".format(file))
+                if len(fw_list) > 1:
+                    print(f"using firmware binary {file}")
                 found_suitable_firmware = True
                 break
 
         if not found_suitable_firmware:
             msg = "Firmware not suitable for this board (Firmware board_type=%u board_id=%u)" % (
                 self.board_type, fw.property('board_id'))
-            print("WARNING: %s" % msg)
-            if force:
-                if len(fw_list) > 1:
-                    raise FirmwareNotSuitableException("force flashing failed, more than one file provided, none suitable")
-                print("FORCED WRITE, FLASHING ANYWAY!")
-            else:
+            print(f"WARNING: {msg}")
+            if not force:
                 raise FirmwareNotSuitableException(msg)
 
+            if len(fw_list) > 1:
+                raise FirmwareNotSuitableException("force flashing failed, more than one file provided, none suitable")
+            print("FORCED WRITE, FLASHING ANYWAY!")
         percent = fw.property('image_size') / fw.property('image_maxsize')
         binary_size = float(fw.property('image_size'))
         binary_max_size = float(fw.property('image_maxsize'))
@@ -616,7 +603,7 @@ class uploader(object):
         if self.board_type != fw.property('board_id'):
             msg = "Firmware not suitable for this board (Firmware board_type=%u board_id=%u)" % (
                 self.board_type, fw.property('board_id'))
-            print("WARNING: %s" % msg)
+            print(f"WARNING: {msg}")
             if force:
                 print("FORCED WRITE, FLASHING ANYWAY!")
             else:
@@ -633,7 +620,7 @@ class uploader(object):
                 self.otp = self.otp + x
                 # print(binascii.hexlify(x).decode('Latin-1') + ' ', end='')
             # see src/modules/systemlib/otp.h in px4 code:
-            self.otp_id = self.otp[0:4]
+            self.otp_id = self.otp[:4]
             self.otp_idtype = self.otp[4:5]
             self.otp_vid = self.otp[8:4:-1]
             self.otp_pid = self.otp[12:8:-1]
@@ -651,7 +638,7 @@ class uploader(object):
 
                 otp_id = self.otp_id.decode('Latin-1')
                 if ("PX4" in otp_id):
-                    print("OTP id: " + otp_id)
+                    print(f"OTP id: {otp_id}")
                     print("OTP idtype: " + binascii.b2a_qp(self.otp_idtype).decode('Latin-1'))
                     print("OTP vid: " + binascii.hexlify(self.otp_vid).decode('Latin-1'))
                     print("OTP pid: " + binascii.hexlify(self.otp_pid).decode('Latin-1'))
@@ -665,8 +652,8 @@ class uploader(object):
         if (self.bl_rev >= 5):
             des = self.__getCHIPDes()
             if (len(des) == 2):
-                print("family: %s" % des[0])
-                print("revision: %s" % des[1])
+                print(f"family: {des[0]}")
+                print(f"revision: {des[1]}")
                 print("flash: %d bytes" % self.fw_maxsize)
 
                 # Prevent uploads where the maximum image size of the board config is smaller than the flash
@@ -680,20 +667,16 @@ class uploader(object):
                 if self.fw_maxsize > fw.property('image_maxsize') and not force:
                     raise RuntimeError("Board can accept larger flash images (%u bytes) than board config (%u bytes). Please use the correct board configuration to avoid lacking critical functionality."
                                        % (self.fw_maxsize, fw.property('image_maxsize')))
-        else:
-            # If we're still on bootloader v4 on a Pixhawk, we don't know if we
-            # have the silicon errata and therefore need to flash px4_fmu-v2
-            # with 1MB flash or if it supports px4_fmu-v3 with 2MB flash.
-            if fw.property('board_id') == 9 \
-                    and fw.property('image_size') > 1032192 \
-                    and not force:
-                raise RuntimeError("\nThe Board uses bootloader revision 4 and can therefore not determine\n"
-                                   "if flashing more than 1 MB (px4_fmu-v3_default) is safe, chances are\n"
-                                   "high that it is not safe! If unsure, use px4_fmu-v2_default.\n"
-                                   "\n"
-                                   "If you know you that the board does not have the silicon errata, use\n"
-                                   "this script with --force, or update the bootloader. If you are invoking\n"
-                                   "upload using make, you can use force-upload target to force the upload.\n")
+        elif fw.property('board_id') == 9 \
+                        and fw.property('image_size') > 1032192 \
+                        and not force:
+            raise RuntimeError("\nThe Board uses bootloader revision 4 and can therefore not determine\n"
+                               "if flashing more than 1 MB (px4_fmu-v3_default) is safe, chances are\n"
+                               "high that it is not safe! If unsure, use px4_fmu-v2_default.\n"
+                               "\n"
+                               "If you know you that the board does not have the silicon errata, use\n"
+                               "this script with --force, or update the bootloader. If you are invoking\n"
+                               "upload using make, you can use force-upload target to force the upload.\n")
         self.__erase("Erase  ")
         self.__program("Program", fw)
 
@@ -738,7 +721,7 @@ class uploader(object):
         CHECKSUM = MAGIC ^ LEN_H ^ LEN_L
 
         header_ints = [MAGIC, LEN_H, LEN_L, CHECKSUM]
-        header_bytes = struct.pack("{}B".format(len(header_ints)), *header_ints)
+        header_bytes = struct.pack(f"{len(header_ints)}B", *header_ints)
 
         self.__send(header_bytes)
         self.__send(data)
@@ -851,22 +834,26 @@ def main():
 
                 # create an uploader attached to the port
                 try:
-                    if "linux" in _platform:
-                        # Linux, don't open Mac OS and Win ports
-                        if "COM" not in port and "tty.usb" not in port:
-                            up = uploader(port, args.baud_bootloader, baud_flightstack)
-                    elif "darwin" in _platform:
-                        # OS X, don't open Windows and Linux ports
-                        if "COM" not in port and "ACM" not in port:
-                            up = uploader(port, args.baud_bootloader, baud_flightstack)
-                    elif "cygwin" in _platform:
-                        # Cygwin, don't open native Windows COM and Linux ports
-                        if "COM" not in port and "ACM" not in port:
-                            up = uploader(port, args.baud_bootloader, baud_flightstack)
-                    elif "win" in _platform:
-                        # Windows, don't open POSIX ports
-                        if "/" not in port:
-                            up = uploader(port, args.baud_bootloader, baud_flightstack)
+                    if (
+                        "linux" in _platform
+                        and "COM" not in port
+                        and "tty.usb" not in port
+                        or "linux" not in _platform
+                        and "darwin" in _platform
+                        and "COM" not in port
+                        and "ACM" not in port
+                        or "linux" not in _platform
+                        and "darwin" not in _platform
+                        and "cygwin" in _platform
+                        and "COM" not in port
+                        and "ACM" not in port
+                        or "linux" not in _platform
+                        and "darwin" not in _platform
+                        and "cygwin" not in _platform
+                        and "win" in _platform
+                        and "/" not in port
+                    ):
+                        up = uploader(port, args.baud_bootloader, baud_flightstack)
                 except Exception:
                     # open failed, rate-limit our attempts
                     time.sleep(0.05)
@@ -884,7 +871,9 @@ def main():
                         up.identify()
                         found_bootloader = True
                         print()
-                        print("Found board id: %s,%s bootloader version: %s on %s" % (up.board_type, up.board_rev, up.bl_rev, port))
+                        print(
+                            f"Found board id: {up.board_type},{up.board_rev} bootloader version: {up.bl_rev} on {port}"
+                        )
                         break
 
                     except Exception:
@@ -944,7 +933,6 @@ def main():
             # Delay retries to < 20 Hz to prevent spin-lock from hogging the CPU
             time.sleep(0.05)
 
-    # CTRL+C aborts the upload/spin-lock by interrupt mechanics
     except KeyboardInterrupt:
         print("\n Upload aborted by user.")
         sys.exit(0)

@@ -16,12 +16,7 @@
 ################################################################################################
 
 from __future__ import print_function
-connection_string       = '127.0.0.1:14540'
-
 import_mission_filename = 'VTOL_TAKEOFF.mission'
-max_execution_time      = 200
-alt_acceptance_radius   = 5
-
 ################################################################################################
 # Init
 ################################################################################################
@@ -38,17 +33,11 @@ parser.add_argument("-t", "--timeout", help="execution timeout", type=float)
 parser.add_argument("-a", "--altrad", help="altitude acceptance radius", type=float)
 args = parser.parse_args()
 
-if args.connect:
-    connection_string = args.connect
+connection_string = args.connect if args.connect else '127.0.0.1:14540'
 if args.filename:
     import_mission_filename = args.filename
-if args.timeout:
-    max_execution_time = args.timeout
-if args.altrad:
-    alt_acceptance_radius = args.altrad
-
-
-
+max_execution_time = args.timeout if args.timeout else 200
+alt_acceptance_radius = args.altrad if args.altrad else 5
 mission_failed = False
 MAV_MODE_AUTO = 4
 
@@ -62,19 +51,19 @@ elapsed_time = time.time() - start_time
 print("Connecting")
 vehicle = connect(connection_string, wait_ready=True)
 
-while not vehicle.system_status.state == "STANDBY" or vehicle.gps_0.fix_type < 3:
+while vehicle.system_status.state != "STANDBY" or vehicle.gps_0.fix_type < 3:
     if time.time() - start_time > 20:
         print("FAILED: SITL did not reach standby with GPS fix within 20 seconds")
         sys.exit(98)
-    print("Waiting for vehicle to initialise... %s " % vehicle.system_status.state)
+    print(f"Waiting for vehicle to initialise... {vehicle.system_status.state} ")
     time.sleep(1)
 
 # Display basic vehicle state
-print(" Type: %s" % vehicle._vehicle_type)
-print(" Armed?: %s" % vehicle.armed)
-print(" System status: %s" % vehicle.system_status.state)
-print(" GPS: %s" % vehicle.gps_0)
-print(" Alt: %s" % vehicle.location.global_relative_frame.alt)
+print(f" Type: {vehicle._vehicle_type}")
+print(f" Armed?: {vehicle.armed}")
+print(f" System status: {vehicle.system_status.state}")
+print(f" GPS: {vehicle.gps_0}")
+print(f" Alt: {vehicle.location.global_relative_frame.alt}")
 
 
 ################################################################################################
@@ -107,7 +96,7 @@ def upload_mission(aFileName):
     #Add new mission to vehicle
     for command in missionlist:
         cmds.add(command)
-    print(' Uploaded mission with %s items' % len(missionlist))
+    print(f' Uploaded mission with {len(missionlist)} items')
     vehicle.commands.upload()
     return missionlist
 
@@ -129,7 +118,7 @@ def listener(self, name, mission_current):
     if (current_sequence != mission_current.seq):
         current_sequence = mission_current.seq;
         current_sequence_changed = True
-        print('current mission sequence: %s' % mission_current.seq)
+        print(f'current mission sequence: {mission_current.seq}')
 
 #Create a message listener for mission sequence number
 @vehicle.on_message('EXTENDED_SYS_STATE')
@@ -171,7 +160,7 @@ time.sleep(1)
 # Arm vehicle
 vehicle.armed = True
 
-while not vehicle.system_status.state == "ACTIVE":
+while vehicle.system_status.state != "ACTIVE":
     if time.time() - start_time > 30:
         print("FAILED: vehicle did not arm within 30 seconds")
         sys.exit(98)
@@ -186,7 +175,9 @@ while (current_sequence < len(missionlist)-1 and elapsed_time < max_execution_ti
     if current_sequence > 0 and current_sequence_changed:
 
         if missionlist[current_sequence-1].z - alt_acceptance_radius > vehicle.location.global_relative_frame.alt or missionlist[current_sequence-1].z + alt_acceptance_radius < vehicle.location.global_relative_frame.alt:
-            print("waypoint %s out of bounds altitude %s gps altitude: %s" % (current_sequence, missionlist[current_sequence-1].z, vehicle.location.global_relative_frame.alt))
+            print(
+                f"waypoint {current_sequence} out of bounds altitude {missionlist[current_sequence - 1].z} gps altitude: {vehicle.location.global_relative_frame.alt}"
+            )
             mission_failed = True
         current_sequence_changed = False
     elapsed_time = time.time() - start_time
@@ -214,11 +205,11 @@ time.sleep(2)
 
 # Validate time constraint
 if elapsed_time <= max_execution_time and not mission_failed:
-    print("Mission succesful time elapsed %s" % elapsed_time)
+    print(f"Mission succesful time elapsed {elapsed_time}")
     sys.exit(0)
 
 if elapsed_time > max_execution_time:
-    print("Mission FAILED to execute within %s seconds" % max_execution_time)
+    print(f"Mission FAILED to execute within {max_execution_time} seconds")
     sys.exit(99)
 
 if mission_failed:

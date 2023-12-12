@@ -7,6 +7,7 @@ Open a shell over MAVLink.
 """
 
 
+
 from __future__ import print_function
 import sys, select
 import termios
@@ -17,7 +18,7 @@ import os
 try:
     from pymavlink import mavutil
 except ImportError as e:
-    print("Failed to import pymavlink: " + str(e))
+    print(f"Failed to import pymavlink: {str(e)}")
     print("")
     print("You may need to install it with:")
     print("    pip3 install --user pymavlink")
@@ -27,7 +28,7 @@ except ImportError as e:
 try:
     import serial
 except ImportError as e:
-    print("Failed to import pyserial: " + str(e))
+    print(f"Failed to import pyserial: {str(e)}")
     print("")
     print("You may need to install it with:")
     print("    pip3 install --user pyserial")
@@ -43,7 +44,7 @@ class MavlinkSerialPort():
         self._debug = debug
         self.buf = ''
         self.port = devnum
-        self.debug("Connecting with MAVLink to %s ..." % portname)
+        self.debug(f"Connecting with MAVLink to {portname} ...")
         self.mav = mavutil.mavlink_connection(portname, autoreconnect=True, baud=baudrate)
         self.mav.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GENERIC, mavutil.mavlink.MAV_AUTOPILOT_INVALID, 0, 0, 0)
         self.mav.wait_heartbeat()
@@ -60,8 +61,7 @@ class MavlinkSerialPort():
         self.debug("sending '%s' (0x%02x) of len %u\n" % (b, ord(b[0]), len(b)), 2)
         while len(b) > 0:
             n = len(b)
-            if n > 70:
-                n = 70
+            n = min(n, 70)
             buf = [ord(x) for x in b[:n]]
             buf.extend([0]*(70-len(buf)))
             self.mav.mav.serial_control_send(self.port,
@@ -85,15 +85,14 @@ class MavlinkSerialPort():
             if self._debug > 2:
                 print(m)
             data = m.data[:m.count]
-            self.buf += ''.join(str(chr(x)) for x in data)
+            self.buf += ''.join(chr(x) for x in data)
 
     def read(self, n):
         '''read some bytes'''
         if len(self.buf) == 0:
             self._recv()
         if len(self.buf) > 0:
-            if n > len(self.buf):
-                n = len(self.buf)
+            n = min(n, len(self.buf))
             ret = self.buf[:n]
             self.buf = self.buf[n:]
             if self._debug >= 2:
@@ -113,7 +112,7 @@ def main():
     args = parser.parse_args()
 
 
-    if args.port == None:
+    if args.port is None:
         if sys.platform == "darwin":
             args.port = "/dev/tty.usbmodem01"
         else:
@@ -184,7 +183,10 @@ def main():
                         erase_last_n_chars(len(cur_line))
 
                         # add to history
-                        if len(command_history) == 0 or command_history[-1] != cur_line:
+                        if (
+                            not command_history
+                            or command_history[-1] != cur_line
+                        ):
                             command_history.append(cur_line)
                             if len(command_history) > 50:
                                 del command_history[0]

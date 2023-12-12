@@ -122,18 +122,14 @@ class Parameter(object):
         """
         keys = self.fields.keys()
         keys = sorted(keys)
-        keys = sorted(keys, key=lambda x: self.priority.get(x, 0), reverse=True)
-        return keys
+        return sorted(keys, key=lambda x: self.priority.get(x, 0), reverse=True)
 
     def GetFieldValue(self, code):
         """
         Return value of the given field code or None if not found.
         """
         fv =  self.fields.get(code)
-        if not fv:
-                # required because python 3 sorted does not accept None
-                return ""
-        return fv
+        return "" if not fv else fv
 
     def GetEnumCodes(self):
         """
@@ -146,10 +142,7 @@ class Parameter(object):
         Return value of the given enum code or None if not found.
         """
         fv =  self.values.get(code)
-        if not fv:
-                # required because python 3 sorted does not accept None
-                return ""
-        return fv
+        return "" if not fv else fv
 
     def GetBitmaskList(self):
         """
@@ -163,10 +156,7 @@ class Parameter(object):
         Return value of the given bitmask code or None if not found.
         """
         fv = self.bitmask.get(index)
-        if not fv:
-                # required because python 3 sorted does not accept None
-                return ""
-        return fv.strip()
+        return "" if not fv else fv.strip()
 
 class SourceParser(object):
     """
@@ -219,56 +209,51 @@ class SourceParser(object):
                 def_values = {}
                 def_bitmask = {}
             elif state is not None and state != "comment-processed":
-                m = self.re_comment_end.search(line)
-                if m:
+                if m := self.re_comment_end.search(line):
                     line = m.group(1)
                     last_comment_line = True
                 else:
                     last_comment_line = False
-                m = self.re_comment_content.match(line)
-                if m:
+                if m := self.re_comment_content.match(line):
                     comment_content = m.group(1)
                     if comment_content == "":
                         # When short comment ends with empty comment line,
                         # start waiting for the next part - long comment.
                         if state == "wait-short-end":
                             state = "wait-long"
-                    else:
-                        m = self.re_comment_tag.match(comment_content)
-                        if m:
-                            tag, desc = m.group(1, 2)
-                            if (tag == "value"):
-                                # Take the meta info string and split the code and description
-                                metainfo = desc.split(" ",  1)
-                                def_values[metainfo[0]] = metainfo[1]
-                            elif (tag == "bit"):
-                                # Take the meta info string and split the code and description
-                                metainfo = desc.split(" ",  1)
-                                def_bitmask[metainfo[0]] = metainfo[1]
-                            else:
-                                tags[tag] = desc
-                            current_tag = tag
-                            state = "wait-tag-end"
-                        elif state == "wait-short":
-                            # Store first line of the short description
-                            short_desc = comment_content
-                            state = "wait-short-end"
-                        elif state == "wait-short-end":
-                            # Append comment line to the short description
-                            short_desc += "\n" + comment_content
-                        elif state == "wait-long":
-                            # Store first line of the long description
-                            long_desc = comment_content
-                            state = "wait-long-end"
-                        elif state == "wait-long-end":
-                            # Append comment line to the long description
-                            long_desc += "\n" + comment_content
-                        elif state == "wait-tag-end":
-                            # Append comment line to the tag text
-                            tags[current_tag] += "\n" + comment_content
+                    elif m := self.re_comment_tag.match(comment_content):
+                        tag, desc = m.group(1, 2)
+                        if (tag == "value"):
+                            # Take the meta info string and split the code and description
+                            metainfo = desc.split(" ",  1)
+                            def_values[metainfo[0]] = metainfo[1]
+                        elif (tag == "bit"):
+                            # Take the meta info string and split the code and description
+                            metainfo = desc.split(" ",  1)
+                            def_bitmask[metainfo[0]] = metainfo[1]
                         else:
-                            raise AssertionError(
-                                    "Invalid parser state: %s" % state)
+                            tags[tag] = desc
+                        current_tag = tag
+                        state = "wait-tag-end"
+                    elif state == "wait-short":
+                        # Store first line of the short description
+                        short_desc = comment_content
+                        state = "wait-short-end"
+                    elif state == "wait-short-end":
+                        # Append comment line to the short description
+                        short_desc += "\n" + comment_content
+                    elif state == "wait-long":
+                        # Store first line of the long description
+                        long_desc = comment_content
+                        state = "wait-long-end"
+                    elif state == "wait-long-end":
+                        # Append comment line to the long description
+                        long_desc += "\n" + comment_content
+                    elif state == "wait-tag-end":
+                        # Append comment line to the tag text
+                        tags[current_tag] += "\n" + comment_content
+                    else:
+                        raise AssertionError(f"Invalid parser state: {state}")
                 elif not last_comment_line:
                     # Invalid comment line (inside comment, but not starting with
                     # "*" or "*/". Reset parsed content.
@@ -279,21 +264,15 @@ class SourceParser(object):
                 tp = None
                 name = None
                 defval = ""
-                # Non-empty line outside the comment
-                m = self.re_px4_param_default_definition.match(line)
-                # Default value handling
-                if m:
+                if m := self.re_px4_param_default_definition.match(line):
                     name_m, defval_m = m.group(1,2)
                     default_var[name_m] = defval_m
-                m = self.re_parameter_definition.match(line)
-                if m:
+                if m := self.re_parameter_definition.match(line):
                     tp, name, defval = m.group(1, 2, 3)
-                else:
-                    m = self.re_px4_parameter_definition.match(line)
-                    if m:
-                        tp, name = m.group(1, 2)
-                        if (name+'_DEFAULT') in default_var:
-                            defval = default_var[name+'_DEFAULT']
+                elif m := self.re_px4_parameter_definition.match(line):
+                    tp, name = m.group(1, 2)
+                    if f'{name}_DEFAULT' in default_var:
+                        defval = default_var[f'{name}_DEFAULT']
                 if tp is not None:
                     # Remove trailing type specifier from numbers: 0.1f => 0.1
                     if defval != "" and self.re_is_a_number.match(defval):
@@ -351,21 +330,73 @@ class SourceParser(object):
         """
         seenParamNames = []
         #allowedUnits should match set defined in /Firmware/validation/module_schema.yaml
-        allowedUnits = set ([
-                                '%', 'Hz', '1/s', 'mAh',
-                                'rad', '%/rad', 'rad/s', 'rad/s^2', '%/rad/s', 'rad s^2/m', 'rad s/m',
-                                'bit/s', 'B/s',
-                                'deg', 'deg*1e7', 'deg/s', 'deg/s^2',
-                                'celcius', 'gauss', 'gauss/s', 'gauss^2',
-                                'hPa', 'kg', 'kg/m^2', 'kg m^2', 'kg/m^3',
-                                'mm', 'm', 'm/s', 'm^2', 'm/s^2', 'm/s^3', 'm/s^2/sqrt(Hz)', '1/s/sqrt(Hz)', 'm/s/rad',
-                                'Ohm', 'V', 'A',
-                                'us', 'ms', 's',
-                                'S', 'A/%', '(m/s^2)^2', 'm/m',  'tan(rad)^2', '(m/s)^2', 'm/rad',
-                                'm/s^3/sqrt(Hz)', 'm/s/sqrt(Hz)', 's/(1000*PWM)', '%m/s', 'min', 'us/C',
-                                'N/(m/s)', 'Nm/rad', 'Nm/(rad/s)', 'Nm', 'N',
-                                'rpm',
-                                'normalized_thrust/s', 'normalized_thrust', 'norm', 'SD',''])
+        allowedUnits = {
+            '%',
+            'Hz',
+            '1/s',
+            'mAh',
+            'rad',
+            '%/rad',
+            'rad/s',
+            'rad/s^2',
+            '%/rad/s',
+            'rad s^2/m',
+            'rad s/m',
+            'bit/s',
+            'B/s',
+            'deg',
+            'deg*1e7',
+            'deg/s',
+            'deg/s^2',
+            'celcius',
+            'gauss',
+            'gauss/s',
+            'gauss^2',
+            'hPa',
+            'kg',
+            'kg/m^2',
+            'kg m^2',
+            'kg/m^3',
+            'mm',
+            'm',
+            'm/s',
+            'm^2',
+            'm/s^2',
+            'm/s^3',
+            'm/s^2/sqrt(Hz)',
+            '1/s/sqrt(Hz)',
+            'm/s/rad',
+            'Ohm',
+            'V',
+            'A',
+            'us',
+            'ms',
+            's',
+            'S',
+            'A/%',
+            '(m/s^2)^2',
+            'm/m',
+            'tan(rad)^2',
+            '(m/s)^2',
+            'm/rad',
+            'm/s^3/sqrt(Hz)',
+            'm/s/sqrt(Hz)',
+            's/(1000*PWM)',
+            '%m/s',
+            'min',
+            'us/C',
+            'N/(m/s)',
+            'Nm/rad',
+            'Nm/(rad/s)',
+            'Nm',
+            'N',
+            'rpm',
+            'normalized_thrust/s',
+            'normalized_thrust',
+            'norm',
+            'SD',
+            '',
+        }
         for group in self.GetParamGroups():
             for param in group.GetParams():
                 name  = param.GetName()
@@ -374,7 +405,7 @@ class SourceParser(object):
                     return False
                 board = param.GetFieldValue("board")
                 # Check for duplicates
-                name_plus_board = name + "+" + board
+                name_plus_board = f"{name}+{board}"
                 for seenParamName in seenParamNames:
                     if seenParamName == name_plus_board:
                         sys.stderr.write("Duplicate parameter definition: {0}\n".format(name_plus_board))

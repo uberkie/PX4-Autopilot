@@ -36,6 +36,7 @@
 
 """
 
+
 import os
 import glob
 import kconfiglib
@@ -47,29 +48,31 @@ import merge_config
 
 px4_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
 
-for name in glob.glob(px4_dir + '/boards/*/*/default.px4board'):
+for name in glob.glob(f'{px4_dir}/boards/*/*/default.px4board'):
     kconf = kconfiglib.Kconfig()
     kconf.load_config(name)
     print(kconf.write_min_config(name))
 
-for name in glob.glob(px4_dir + '/boards/*/*/bootloader.px4board'):
+for name in glob.glob(f'{px4_dir}/boards/*/*/bootloader.px4board'):
     kconf = kconfiglib.Kconfig()
     kconf.load_config(name)
     print(kconf.write_min_config(name))
 
-for name in glob.glob(px4_dir + '/boards/*/*/canbootloader.px4board'):
+for name in glob.glob(f'{px4_dir}/boards/*/*/canbootloader.px4board'):
     kconf = kconfiglib.Kconfig()
     kconf.load_config(name)
     print(kconf.write_min_config(name))
 
-for name in glob.glob(px4_dir + '/boards/*/*/*.px4board'):
-    if(os.path.basename(name) != "default.px4board" and
-       os.path.basename(name) != "bootloader.px4board" and
-       os.path.basename(name) != "canbootloader.px4board"):
-        board_default = os.path.dirname(name) + "/default.px4board";
+for name in glob.glob(f'{px4_dir}/boards/*/*/*.px4board'):
+    if os.path.basename(name) not in [
+        "default.px4board",
+        "bootloader.px4board",
+        "canbootloader.px4board",
+    ]:
+        board_default = f"{os.path.dirname(name)}/default.px4board";
 
         # Merge with default config
-        kconf = merge_config.main(px4_dir + "/Kconfig", board_default, name)
+        kconf = merge_config.main(f"{px4_dir}/Kconfig", board_default, name)
         tf = tempfile.NamedTemporaryFile()
 
         # Save minconfig

@@ -42,22 +42,29 @@ git_tag = subprocess.check_output(git_describe_cmd.split(),
 
 try:
     # get the tag if we're on a tagged commit
-    tag_or_branch = subprocess.check_output((git_describe_cmd+' --exact-match').split(),
-                                            stderr=subprocess.STDOUT).decode('utf-8').strip()
+    tag_or_branch = (
+        subprocess.check_output(
+            f'{git_describe_cmd} --exact-match'.split(),
+            stderr=subprocess.STDOUT,
+        )
+        .decode('utf-8')
+        .strip()
+    )
 except:
     tag_or_branch = None
 
 if validate:
     if verbose:
-        print("testing git tag: "+git_tag)
+        print(f"testing git tag: {git_tag}")
     # remove optional '-dirty' at the end
     git_tag_test = re.sub(r'-dirty$', '', git_tag)
     # remove optional -<num_commits>-g<commit_hash> at the end (in case we are not on a tagged commit)
     git_tag_test = re.sub(r'-[0-9]+-g[0-9a-fA-F]+$', '', git_tag_test)
-    # now check the version format
-    m = re.match(r'v([0-9]+)\.([0-9]+)\.[0-9]+(((-dev)|(-alpha[0-9]+)|(-beta[0-9]+)|(-rc[0-9]+))|'\
-                 r'(-[0-9]+\.[0-9]+\.[0-9]+((-dev)|(-alpha[0-9]+)|(-beta[0-9]+)|([-]?rc[0-9]+))?))?$', git_tag_test)
-    if m:
+    if m := re.match(
+        r'v([0-9]+)\.([0-9]+)\.[0-9]+(((-dev)|(-alpha[0-9]+)|(-beta[0-9]+)|(-rc[0-9]+))|'
+        r'(-[0-9]+\.[0-9]+\.[0-9]+((-dev)|(-alpha[0-9]+)|(-beta[0-9]+)|([-]?rc[0-9]+))?))?$',
+        git_tag_test,
+    ):
         # format matches, check the major and minor numbers
         major = int(m.group(1))
         minor = int(m.group(2))
@@ -90,7 +97,7 @@ try:
                                           stderr=subprocess.STDOUT).decode('utf-8').strip()
 except:
     git_branch_name = ''
-git_version_short = git_version[0:16]
+git_version_short = git_version[:16]
 
 # OEM version
 try:
@@ -123,7 +130,7 @@ header += f"""
 if (os.path.exists('src/modules/mavlink/mavlink/.git')):
     mavlink_git_version = subprocess.check_output('git rev-parse --verify HEAD'.split(),
                                       cwd='src/modules/mavlink/mavlink', stderr=subprocess.STDOUT).decode('utf-8').strip()
-    mavlink_git_version_short = mavlink_git_version[0:16]
+    mavlink_git_version_short = mavlink_git_version[:16]
 
     header += f"""
 #define MAVLINK_LIB_GIT_VERSION_STR  "{mavlink_git_version}"
@@ -139,7 +146,7 @@ if (os.path.exists('platforms/nuttx/NuttX/nuttx/.git')):
     nuttx_git_tag = re.sub('-.*', '.0', nuttx_git_tag)
     nuttx_git_version = subprocess.check_output('git rev-parse --verify HEAD'.split(),
                                       cwd='platforms/nuttx/NuttX/nuttx', stderr=subprocess.STDOUT).decode('utf-8').strip()
-    nuttx_git_version_short = nuttx_git_version[0:16]
+    nuttx_git_version_short = nuttx_git_version[:16]
 
     header += f"""
 #define NUTTX_GIT_VERSION_STR  "{nuttx_git_version}"
@@ -150,6 +157,6 @@ if (os.path.exists('platforms/nuttx/NuttX/nuttx/.git')):
 
 if old_header != header:
     if verbose:
-        print('Updating header {}'.format(filename))
+        print(f'Updating header {filename}')
     fp_header = open(filename, 'w')
     fp_header.write(header)

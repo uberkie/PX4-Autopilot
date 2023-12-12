@@ -26,23 +26,10 @@ def get_innovation_message(ulog: ULog, topic: str = 'innovation') -> str:
     :param ulog:
     :return: str
     """
-    if topic == 'innovation':
+    if topic in {'innovation', 'innovation_variance', 'innovation_test_ratio'}:
         for elem in  ulog.data_list:
             if elem.name == "ekf2_innovations":
                 return "ekf2_innovations"
             if elem.name == "estimator_innovations":
                 return "estimator_innovations"
-    if topic == 'innovation_variance':
-        for elem in  ulog.data_list:
-            if elem.name == "ekf2_innovations":
-                return "ekf2_innovations"
-            if elem.name == "estimator_innovations":
-                return "estimator_innovations"
-    if topic == 'innovation_test_ratio':
-        for elem in  ulog.data_list:
-            if elem.name == "ekf2_innovations":
-                return "ekf2_innovations"
-            if elem.name == "estimator_innovations":
-                return "estimator_innovations"
-
     raise PreconditionError("Could not detect the message")

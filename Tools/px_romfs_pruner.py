@@ -98,8 +98,8 @@ def main():
                     # abort if spurious tabs are found
                     if re.search(r"[a-zA-Z0-9]+\t.+", line):
                         file_local = re.sub(args.folder, '', file_path)
-                        print("ERROR: Spurious TAB character in file " + file_local)
-                        print("Line: " + line)
+                        print(f"ERROR: Spurious TAB character in file {file_local}")
+                        print(f"Line: {line}")
                         err_count += 1
 
                     # find excluded boards

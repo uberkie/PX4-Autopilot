@@ -256,11 +256,11 @@ def st_step_search(hse):
     if match_pos == MATCH_NOT_FOUND:
         hse.match_scan_index += 1
         hse.match_length = 0
-        return HSE_state.HSES_YIELD_TAG_BIT
     else:
         hse.match_pos = match_pos
         hse.match_length = match_length
-        return HSE_state.HSES_YIELD_TAG_BIT
+
+    return HSE_state.HSES_YIELD_TAG_BIT
 
 
 def find_longest_match(hse, start, end, maxlen):
@@ -287,7 +287,7 @@ def find_longest_match(hse, start, end, maxlen):
             match_maxlen = length
             match_index = pos
             buf_needlepoint_maxlen = buf[needlepoint + match_maxlen]
-            if length == maxlen:
+            if match_maxlen == maxlen:
                 break  # won't find better
 
         pos = hse.search_index.index[pos]
@@ -336,27 +336,23 @@ def st_yield_literal(hse, oi):
 
 
 def st_yield_br_index(hse, oi):
-    if can_take_byte(oi):
-        if push_outgoing_bits(hse, oi) > 0:
-            return HSE_state.HSES_YIELD_BR_INDEX
-        else:
-            hse.outgoing_bits = hse.match_length - 1
-            hse.outgoing_bits_count = hse.lookahead_size
-            return HSE_state.HSES_YIELD_BR_LENGTH
-    else:
+    if not can_take_byte(oi):
         return HSE_state.HSES_YIELD_BR_INDEX
+    if push_outgoing_bits(hse, oi) > 0:
+        return HSE_state.HSES_YIELD_BR_INDEX
+    hse.outgoing_bits = hse.match_length - 1
+    hse.outgoing_bits_count = hse.lookahead_size
+    return HSE_state.HSES_YIELD_BR_LENGTH
 
 
 def st_yield_br_length(hse, oi):
-    if can_take_byte(oi):
-        if push_outgoing_bits(hse, oi) > 0:
-            return HSE_state.HSES_YIELD_BR_LENGTH
-        else:
-            hse.match_scan_index += hse.match_length
-            hse.match_length = 0
-            return HSE_state.HSES_SEARCH
-    else:
+    if not can_take_byte(oi):
         return HSE_state.HSES_YIELD_BR_LENGTH
+    if push_outgoing_bits(hse, oi) > 0:
+        return HSE_state.HSES_YIELD_BR_LENGTH
+    hse.match_scan_index += hse.match_length
+    hse.match_length = 0
+    return HSE_state.HSES_SEARCH
 
 
 def st_save_backlog(hse):
@@ -414,7 +410,7 @@ def encode(data, window_size, lookahead_size):
         while poll_res == HSE_poll_res.HSER_POLL_MORE:
             output_size = (ctypes.c_size_t * 1)()
             poll_res = heatshrink_encoder_poll(hse, out_buf, out_buf_size, output_size)
-            ret += list(out_buf)[0:output_size[0]]
+            ret += list(out_buf)[:output_size[0]]
 
         if sunk == in_size:
             heatshrink_encoder_finish(hse)

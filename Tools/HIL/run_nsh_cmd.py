@@ -88,10 +88,9 @@ def do_nsh_cmd(port_url, baudrate, cmd, ignore_stdout_errors=False):
                 sys.exit(0)
             else:
                 print_line(serial_line)
-        else:
-            if time.monotonic() > timeout_start + timeout:
-                print("Error, timeout waiting for command echo")
-                break
+        elif time.monotonic() > timeout_start + timeout:
+            print("Error, timeout waiting for command echo")
+            break
 
 
     timeout_start = time.monotonic()
@@ -111,14 +110,11 @@ def do_nsh_cmd(port_url, baudrate, cmd, ignore_stdout_errors=False):
 
                 print_line(serial_line)
 
-                if "nsh>" in serial_line:
+                if "nsh>" in serial_line or "NuttShell (NSH)" in serial_line:
                     sys.exit(1) # error, command didn't complete successfully
-                elif "NuttShell (NSH)" in serial_line:
-                    sys.exit(1) # error, command didn't complete successfully
-        else:
-            if time.monotonic() > timeout_start + timeout:
-                print("Error, timeout")
-                sys.exit(-1)
+        elif time.monotonic() > timeout_start + timeout:
+            print("Error, timeout")
+            sys.exit(-1)
 
 
 def main():

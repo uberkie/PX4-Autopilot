@@ -2,6 +2,7 @@
 """ Script to validate JSON file(s) against a schema file according to
 https://json-schema.org/"""
 
+
 import argparse
 import sys
 import json
@@ -10,7 +11,7 @@ import os
 try:
     from jsonschema import validate
 except ImportError as e:
-    print("Failed to import jsonschema: " + str(e))
+    print(f"Failed to import jsonschema: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user jsonschema")

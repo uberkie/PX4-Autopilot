@@ -167,7 +167,8 @@ def get_children_fields(base_type, search_path):
     (package, name) = genmsg.names.package_resource_name(base_type)
     tmp_msg_context = genmsg.msg_loader.MsgContext.create_default()
     spec_temp = genmsg.msg_loader.load_msg_by_type(
-        tmp_msg_context, '%s/%s' % (package, name), search_path)
+        tmp_msg_context, f'{package}/{name}', search_path
+    )
     return spec_temp.parsed_fields()
 
 
@@ -198,7 +199,7 @@ int8 esc_power
         if sl_pos >= 0:
             type_name = type_name[sl_pos + 1:]
 
-        all_fields_str += type_name + ' ' + field.name + '\n'
+        all_fields_str += f'{type_name} {field.name}' + '\n'
 
         if sl_pos >= 0: # nested type, add all nested fields
             children_fields = get_children_fields(field.base_type, search_path)
@@ -249,8 +250,10 @@ def add_padding_bytes(fields, search_path):
                 # embedded type: may need to add padding
                 num_padding_bytes = align_to - (struct_size % align_to)
                 if num_padding_bytes != align_to:
-                    padding_field = genmsg.Field('_padding' + str(padding_idx),
-                                                 'uint8[' + str(num_padding_bytes) + ']')
+                    padding_field = genmsg.Field(
+                        f'_padding{str(padding_idx)}',
+                        f'uint8[{str(num_padding_bytes)}]',
+                    )
                     padding_idx += 1
                     padding_field.sizeof_field_type = 1
                     struct_size += num_padding_bytes
@@ -268,8 +271,9 @@ def add_padding_bytes(fields, search_path):
     if num_padding_bytes == align_to:
         num_padding_bytes = 0
     else:
-        padding_field = genmsg.Field('_padding' + str(padding_idx),
-                                     'uint8[' + str(num_padding_bytes) + ']')
+        padding_field = genmsg.Field(
+            f'_padding{str(padding_idx)}', f'uint8[{str(num_padding_bytes)}]'
+        )
         padding_idx += 1
         padding_field.sizeof_field_type = 1
         struct_size += num_padding_bytes
@@ -295,10 +299,7 @@ def convert_type(spec_type, use_short_type=False):
     else:
         c_type = re.sub(r'(?<!^)(?=[A-Z])', '_', c_type).lower() # PascalCase to snake_case
 
-    if is_array:
-        return c_type + "[" + str(array_length) + "]"
-
-    return c_type
+    return f"{c_type}[{str(array_length)}]" if is_array else c_type
 
 
 def print_field_def(field):
@@ -329,12 +330,7 @@ def print_field_def(field):
         array_size = type_name[a_pos:]
         type_name = type_name[:a_pos]
 
-    if type_name in type_map:
-        # need to add _t: int8 --> int8_t
-        type_px4 = type_map[type_name]
-    else:
-        type_px4 = type_name
-
+    type_px4 = type_map[type_name] if type_name in type_map else type_name
     comment = ''
     if field.name.startswith('_padding'):
         comment = ' // required for logger'

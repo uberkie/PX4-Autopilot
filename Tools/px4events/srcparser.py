@@ -38,7 +38,7 @@ class Event(object):
     def set_default_arguments(self, num_args):
         """ set argument names to default (if not specified) """
         for i in range(num_args):
-            self.add_argument(None, "arg"+str(i))
+            self.add_argument(None, f"arg{str(i)}")
 
     def _shift_printed_arguments(self, msg, offset):
         """ shift all {<idx> arguments by an offset """
@@ -50,8 +50,7 @@ class Event(object):
                 continue
 
             if msg[i] == '{':
-                m = re.match(r"^(\d+)", msg[i+1:])
-                if m:
+                if m := re.match(r"^(\d+)", msg[i + 1 :]):
                     arg_idx = int(m.group(1)) + offset
                     msg = msg[:i+1] + str(arg_idx) + msg[i+1+len(m.group(1)):]
             i += 1
@@ -78,7 +77,8 @@ class Event(object):
 
     def validate(self):
         if self.name is None: raise Exception("missing event name")
-        if self.message is None: raise Exception("missing event message for {}".format(self.name))
+        if self.message is None:
+            raise Exception(f"missing event message for {self.name}")
         # just to ensure a common convention
         assert self.message[-1] != '.', "Avoid event message ending in '.' ({:})".format(self.message)
         # description is optional
@@ -123,14 +123,14 @@ class SourceParser(object):
                 # merge continued lines (but not e.g. enumerations)
                 for i in range(1, len(descr)-1):
                     if descr[i-1] != '\n' and descr[i] == '\n' and descr[i+1].isalpha():
-                        descr = descr[:i] + ' ' + descr[i+1:]
+                        descr = f'{descr[:i]} {descr[i + 1:]}'
                 event.description = descr
             elif tag == "group":
                 known_groups = ["calibration", "health", "arming_check", "default"]
                 event.group = value.strip()
-                if not event.group in known_groups:
+                if event.group not in known_groups:
                     raise Exception("Unknown event group: '{}'\nKnown groups: {}\n" \
-                        "If this is not a typo, add the new group to the script".format(event.group, known_groups))
+                            "If this is not a typo, add the new group to the script".format(event.group, known_groups))
             elif tag == "type":
                 event.type = value.strip()
             elif tag == "skip-file":
@@ -172,7 +172,7 @@ class SourceParser(object):
 
             if state is None:
                 assert 'events::ID(' not in line or line.startswith('//'), \
-                    "unmatched 'events::ID(' found in line '{:}'".format(line)
+                        "unmatched 'events::ID(' found in line '{:}'".format(line)
                 continue
 
             if state == "parse-command":
@@ -198,7 +198,7 @@ class SourceParser(object):
 
                     # get argument types from template arguments
                     assert len(template_args) == len(event.arguments), \
-                        "Number of arguments mismatch (args: {:})".format(template_args)
+                            "Number of arguments mismatch (args: {:})".format(template_args)
                     num_args = len(template_args)
                     for i in range(num_args):
                         arg_name = event.arguments[i][1]
@@ -218,15 +218,15 @@ class SourceParser(object):
 
                     # extract function arguments
                     args_split = self._parse_arguments(args)
-                    if call == "events::send" or call == "send":
+                    if call in ["events::send", "send"]:
                         if len(args_split) == 1:
                             # This is a send call for a generated event
                             ignore_event = True
                         else:
                             assert len(args_split) == num_args + 3, \
-                                "Unexpected Number of arguments for: {:}, " \
-                                "num template args: {:} (missing template args?)" \
-                                .format(args_split, num_args)
+                                    "Unexpected Number of arguments for: {:}, " \
+                                    "num template args: {:} (missing template args?)" \
+                                    .format(args_split, num_args)
                             m = self.re_event_id.search(args_split[0])
                             if m:
                                 _, event_name = m.group(1, 2)
@@ -236,7 +236,7 @@ class SourceParser(object):
                             event.message = parse_message(args_split[2])
                     elif call in ['reporter.healthFailure', 'reporter.armingCheckFailure']:
                         assert len(args_split) == num_args + 5, \
-                            "Unexpected Number of arguments for: {:}, {:}".format(args_split, num_args)
+                                "Unexpected Number of arguments for: {:}, {:}".format(args_split, num_args)
                         m = self.re_event_id.search(args_split[2])
                         if m:
                             _, event_name = m.group(1, 2)
@@ -244,15 +244,12 @@ class SourceParser(object):
                             raise Exception("Could not extract event ID from {:}".format(args_split[2]))
                         event.name = event_name
                         event.message = parse_message(args_split[4])
-                        if 'health' in call:
-                            event.group = "health"
-                        else:
-                            event.group = "arming_check"
+                        event.group = "health" if 'health' in call else "arming_check"
                         event.prepend_arguments([('navigation_mode_group_t', 'modes'),
                                 ('uint8_t', 'health_component_index')])
                     elif call in ['reporter.healthFailureExt', 'reporter.armingCheckFailureExt']: # from ROS2
                         assert len(args_split) == num_args + 3, \
-                            "Unexpected Number of arguments for: {:}, {:}".format(args_split, num_args)
+                                "Unexpected Number of arguments for: {:}, {:}".format(args_split, num_args)
                         m = self.re_event_id.search(args_split[0])
                         if m:
                             _, event_name = m.group(1, 2)
@@ -260,10 +257,7 @@ class SourceParser(object):
                             raise Exception("Could not extract event ID from {:}".format(args_split[0]))
                         event.name = event_name
                         event.message = args_split[2][1:-1]
-                        if 'health' in call:
-                            event.group = "health"
-                        else:
-                            event.group = "arming_check"
+                        event.group = "health" if 'health' in call else "arming_check"
                         event.prepend_arguments([('navigation_mode_group_t', 'modes'),
                                 ('uint8_t', 'health_component_index')])
                     else:
@@ -273,7 +267,7 @@ class SourceParser(object):
                         event.validate()
 
                         # insert
-                        if not event.group in self._events:
+                        if event.group not in self._events:
                             self._events[event.group] = []
                         self._events[event.group].append(event)
 

@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 """ Script to generate header file from YAML file """
 
+
 import argparse
 import sys
 import os
@@ -8,7 +9,7 @@ import os
 try:
     import yaml
 except ImportError as e:
-    print("Failed to import yaml: " + str(e))
+    print(f"Failed to import yaml: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user pyyaml")
@@ -51,14 +52,14 @@ for group_key in functions:
     for function_name in group:
         if isinstance(group[function_name], int):
             add_function(group[function_name], function_name)
-        elif not 'count' in group[function_name]:
+        elif 'count' not in group[function_name]:
             add_function(group[function_name]['start'], function_name)
         else:
             start = group[function_name]['start']
             count = group[function_name]['count']
             for i in range(count):
                 add_function(start+i, function_name+str(i+1))
-            add_function(start+count-1, function_name+'Max', False)
+            add_function(start+count-1, f'{function_name}Max', False)
             function_defs += '\n'
 
 

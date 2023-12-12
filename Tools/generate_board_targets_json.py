@@ -61,20 +61,17 @@ def process_target(px4board_file, target_name):
 
     if platform not in excluded_platforms:
         # get the container based on the platform and toolchain
-        if platform == 'posix':
+        if platform == 'nuttx':
+            container = 'px4io/px4-dev-nuttx-focal:2022-08-12'
+        elif platform == 'posix':
             container = 'px4io/px4-dev-base-focal:2021-09-08'
             if toolchain:
                 if toolchain.startswith('aarch64'):
                     container = 'px4io/px4-dev-aarch64:2022-08-12'
                 elif toolchain == 'arm-linux-gnueabihf':
                     container = 'px4io/px4-dev-armhf:2023-06-26'
-                else:
-                    if verbose: print(f'unmatched toolchain: {toolchain}')
-        elif platform == 'nuttx':
-            container = 'px4io/px4-dev-nuttx-focal:2022-08-12'
-        else:
-            if verbose: print(f'unmatched platform: {platform}')
-
+                elif verbose: print(f'unmatched toolchain: {toolchain}')
+        elif verbose: print(f'unmatched platform: {platform}')
         ret = {'target': target_name, 'container': container}
 
     return ret
@@ -93,9 +90,9 @@ for manufacturer in os.scandir(os.path.join(source_dir, 'boards')):
         for files in os.scandir(board.path):
             if files.is_file() and files.name.endswith('.px4board'):
 
-                board_name = manufacturer.name + '_' + board.name
+                board_name = f'{manufacturer.name}_{board.name}'
                 label = files.name[:-9]
-                target_name = manufacturer.name + '_' + board.name + '_' + label
+                target_name = f'{manufacturer.name}_{board.name}_{label}'
 
                 if board_name in excluded_boards:
                     if verbose: print(f'excluding board {board_name} ({target_name})')

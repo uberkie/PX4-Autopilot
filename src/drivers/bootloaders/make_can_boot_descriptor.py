@@ -46,11 +46,11 @@ crctab = array.array('I', [
 class GitWrapper:
     @classmethod
     def command(cls, txt):
-        cmd = "git " + txt
+        cmd = f"git {txt}"
         pr = subprocess.Popen( cmd , shell = True, stdout = subprocess.PIPE, stderr = subprocess.PIPE )
         (out, error) = pr.communicate()
         if len(error):
-            raise Exception(cmd +" failed with [" + error.strip() + "]")
+            raise Exception(f"{cmd} failed with [{error.strip()}]")
         return out
 
 class AppDescriptor(object):
@@ -127,15 +127,12 @@ class FirmwareImage(object):
             self._do_close = False
         else:
             if "b" not in mode:
-                self._file = open(path_or_file, mode + "b")
+                self._file = open(path_or_file, f"{mode}b")
             else:
                 self._file = open(path_or_file, mode)
             self._do_close = True
 
-        if "r" in mode:
-            self._contents = BytesIO(self._file.read())
-        else:
-            self._contents = BytesIO()
+        self._contents = BytesIO(self._file.read()) if "r" in mode else BytesIO()
         self._do_write = False
 
         self._length = None
@@ -254,8 +251,8 @@ class FirmwareImage(object):
                     break
             # Go back to the previous position
             self._contents.seek(prev_offset)
-            if not self._descriptor_offset:
-                raise Exception('AppDescriptor not found')
+        if not self._descriptor_offset:
+            raise Exception('AppDescriptor not found')
 
         return self._descriptor_offset
 
@@ -307,8 +304,8 @@ if __name__ == "__main__":
     if options.use_git_hash:
         try:
             options.vcs_commit = int(GitWrapper.command("rev-list HEAD --max-count=1 --abbrev=8 --abbrev-commit"),16)
-        except Exception  as e:
-            print("Git Command failed "+ str(e) +"- Exiting!")
+        except Exception as e:
+            print(f"Git Command failed {str(e)}- Exiting!")
             quit()
 
     if args:
@@ -325,31 +322,31 @@ if __name__ == "__main__":
 
     bootloader_size = int(options.bootloader_size)
 
-    with FirmwareImage(in_file, "rb", 0) as in_image:
-        with FirmwareImage(out_file, "wb", options.padding) as out_image:
-            image = in_image.read()
-            out_image.write(bootloader_image)
-            out_image.write(image[bootloader_size:])
-            if options.vcs_commit:
-                out_image.app_descriptor.vcs_commit = options.vcs_commit
-            out_image.write_descriptor()
+        with FirmwareImage(in_file, "rb", 0) as in_image:
+            with FirmwareImage(out_file, "wb", options.padding) as out_image:
+                image = in_image.read()
+                out_image.write(bootloader_image)
+                out_image.write(image[bootloader_size:])
+                if options.vcs_commit:
+                    out_image.app_descriptor.vcs_commit = options.vcs_commit
+                out_image.write_descriptor()
 
-            if options.verbose:
-                sys.stderr.write(
-"""
+                if options.verbose:
+                    sys.stderr.write(
+    """
 Application descriptor located at offset 0x{0.app_descriptor_offset:08X}
 
 """.format(in_image, in_image.app_descriptor, out_image.app_descriptor,
-           bootloader_size, len(bootloader_image)))
-                if bootloader_size:
-                    sys.stderr.write(
-"""Ignored the first {3:d} bytes of the input image. Prepended {4:d} bytes of
+               bootloader_size, len(bootloader_image)))
+                    if bootloader_size:
+                        sys.stderr.write(
+    """Ignored the first {3:d} bytes of the input image. Prepended {4:d} bytes of
 bootloader image to the output image.
 
 """.format(in_image, in_image.app_descriptor, out_image.app_descriptor,
-           bootloader_size, len(bootloader_image)))
-                sys.stderr.write(
-"""READ VALUES
+               bootloader_size, len(bootloader_image)))
+                    sys.stderr.write(
+    """READ VALUES
 ------------------------------------------------------------------------------
 Field               Type              Value
 signature           uint64            {1.signature!r}
@@ -375,9 +372,9 @@ version_minor       uint8             {2.version_minor:d}
 board_id            uint32            0x{2.board_id:X}
 reserved            uint8[8]          {2.reserved!r}
 """.format(in_image, in_image.app_descriptor, out_image.app_descriptor,
-           bootloader_size, len(bootloader_image)))
-                if out_image.padding:
-                    sys.stderr.write(
-"""
+               bootloader_size, len(bootloader_image)))
+                    if out_image.padding:
+                        sys.stderr.write(
+    """
 padding added {}
 """.format(out_image.padding))

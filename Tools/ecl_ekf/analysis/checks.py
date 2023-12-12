@@ -56,11 +56,11 @@ def perform_imu_checks(
     # perform the vibration check
     imu_status['imu_vibration_check'] = 'Pass'
     for imu_vibr_metric in ['imu_coning', 'imu_hfgyro', 'imu_hfaccel']:
-        mean_metric = '{:s}_mean_warn'.format(imu_vibr_metric)
-        peak_metric = '{:s}_peak_warn'.format(imu_vibr_metric)
         mean_key = '{:s}_mean'.format(imu_vibr_metric)
         peak_key = '{:s}_peak'.format(imu_vibr_metric)
         if mean_key in imu_metrics and peak_key in imu_metrics:
+            mean_metric = '{:s}_mean_warn'.format(imu_vibr_metric)
+            peak_metric = '{:s}_peak_warn'.format(imu_vibr_metric)
             if imu_metrics[mean_key] > check_levels[mean_metric] \
                    or imu_metrics[peak_key] > check_levels[peak_metric]:
                 imu_status['imu_vibration_check'] = 'Warning'
@@ -140,8 +140,7 @@ def perform_sensor_innov_checks(
             if metrics[metric_name] > check_levels['{:s}_fail_pct'.format(result_id)]:
                 sensor_status['{:s}_sensor_status'.format(result_id)] = 'Fail'
                 print('{:s} sensor check failure.'.format(result_id))
-            else:
-                if not ('{:s}_sensor_status'.format(result_id) in sensor_status):
-                    sensor_status['{:s}_sensor_status'.format(result_id)] = 'Pass'
+            elif '{:s}_sensor_status'.format(result_id) not in sensor_status:
+                sensor_status['{:s}_sensor_status'.format(result_id)] = 'Pass'
 
     return sensor_status

@@ -53,12 +53,12 @@ The generated files will be written to the `modules` directory.
                     if subcategory == '':
                         continue
                     subcategory_label = subcategory.replace('_', ' ').title()
-                    subcategory_file_name = category+'_'+subcategory
+                    subcategory_file_name = f'{category}_{subcategory}'
                     result += '- [%s](modules_%s.md)\n' % (subcategory_label, subcategory_file_name)
 
                     # add a sub-page for the subcategory
                     result_subpage = '# Modules Reference: %s (%s)\n' % \
-                        (subcategory_label, category.capitalize())
+                            (subcategory_label, category.capitalize())
                     result_subpage += self._ProcessModules(subcategories[subcategory])
                     self._outputs[subcategory_file_name] = result_subpage
 
@@ -81,5 +81,5 @@ The generated files will be written to the `modules` directory.
     def Save(self, dirname):
         for output_name in self._outputs:
             output = self._outputs[output_name]
-            with codecs.open(os.path.join(dirname, 'modules_'+output_name+'.md'), 'w', 'utf-8') as f:
+            with codecs.open(os.path.join(dirname, f'modules_{output_name}.md'), 'w', 'utf-8') as f:
                 f.write(output)

@@ -851,9 +851,8 @@ class Kconfig(object):
         self.config_prefix = os.environ.get("CONFIG_", "CONFIG_")
 
         # Regular expressions for parsing .config files
-        self._set_match = _re_match(self.config_prefix + r"([^=]+)=(.*)")
-        self._unset_match = \
-            _re_match(r"# {}([^ ]+) is not set".format(self.config_prefix))
+        self._set_match = _re_match(f"{self.config_prefix}([^=]+)=(.*)")
+        self._unset_match = _re_match(f"# {self.config_prefix}([^ ]+) is not set")
 
 
         self.warnings = []
@@ -861,7 +860,7 @@ class Kconfig(object):
         self._warnings_enabled = warn
         self._warn_to_stderr = warn_to_stderr
         self._warn_for_undef_assign = \
-            os.environ.get("KCONFIG_WARN_UNDEF_ASSIGN") == "y"
+                os.environ.get("KCONFIG_WARN_UNDEF_ASSIGN") == "y"
         self._warn_for_redun_assign = self._warn_for_override = True
 
 
@@ -966,7 +965,7 @@ class Kconfig(object):
         # Open the top-level Kconfig file. Store the readline() method directly
         # as a small optimization.
         self._readline = \
-            self._open(os.path.join(self.srctree, filename), "r").readline
+                self._open(os.path.join(self.srctree, filename), "r").readline
 
         try:
             # Parse everything
@@ -997,7 +996,7 @@ class Kconfig(object):
         # KCONFIG_STRICT is an older alias for KCONFIG_WARN_UNDEF, supported
         # for backwards compatibility
         if os.environ.get("KCONFIG_WARN_UNDEF") == "y" or \
-           os.environ.get("KCONFIG_STRICT") == "y":
+               os.environ.get("KCONFIG_STRICT") == "y":
 
             self._check_undef_syms()
 
@@ -1099,8 +1098,7 @@ class Kconfig(object):
             filename = standard_config_filename()
             if os.path.exists(filename):
                 if verbose:
-                    print("Using existing configuration '{}' as base"
-                          .format(filename))
+                    print(f"Using existing configuration '{filename}' as base")
             else:
                 filename = self.defconfig_filename
                 if filename is None:
@@ -1109,8 +1107,7 @@ class Kconfig(object):
                     return False
 
                 if verbose:
-                    print("Using default configuration found in '{}' as "
-                          "base".format(filename))
+                    print(f"Using default configuration found in '{filename}' as base")
 
                 loaded_existing = False
 
@@ -1154,8 +1151,7 @@ class Kconfig(object):
                 # The C tools ignore trailing whitespace
                 line = line.rstrip()
 
-                match = set_match(line)
-                if match:
+                if match := set_match(line):
                     name, val = match.groups()
                     if name not in syms:
                         self._undef_assign(name, val, filename, linenr)
@@ -1173,11 +1169,11 @@ class Kconfig(object):
                                  val.startswith(("y", "n"))) or
                                 (sym.orig_type is TRISTATE and
                                  val.startswith(("y", "m", "n")))):
-                            self._warn("'{}' is not a valid value for the {} "
-                                       "symbol {}. Assignment ignored."
-                                       .format(val, TYPE_TO_STR[sym.orig_type],
-                                               _name_and_loc(sym)),
-                                       filename, linenr)
+                            self._warn(
+                                f"'{val}' is not a valid value for the {TYPE_TO_STR[sym.orig_type]} symbol {_name_and_loc(sym)}. Assignment ignored.",
+                                filename,
+                                linenr,
+                            )
                             continue
 
                         val = val[0]
@@ -1189,7 +1185,7 @@ class Kconfig(object):
 
                             prev_mode = sym.choice.user_value
                             if prev_mode is not None and \
-                               TRI_TO_STR[prev_mode] != val:
+                                   TRI_TO_STR[prev_mode] != val:
 
                                 self._warn("both m and y assigned to symbols "
                                            "within the same choice",
@@ -1201,10 +1197,11 @@ class Kconfig(object):
                     elif sym.orig_type is STRING:
                         match = _conf_string_match(val)
                         if not match:
-                            self._warn("malformed string literal in "
-                                       "assignment to {}. Assignment ignored."
-                                       .format(_name_and_loc(sym)),
-                                       filename, linenr)
+                            self._warn(
+                                f"malformed string literal in assignment to {_name_and_loc(sym)}. Assignment ignored.",
+                                filename,
+                                linenr,
+                            )
                             continue
 
                         val = unescape(match.group(1))
@@ -1217,9 +1214,7 @@ class Kconfig(object):
                         # lines or comments. 'line' has already been
                         # rstrip()'d, so blank lines show up as "" here.
                         if line and not line.lstrip().startswith("#"):
-                            self._warn("ignoring malformed line '{}'"
-                                       .format(line),
-                                       filename, linenr)
+                            self._warn(f"ignoring malformed line '{line}'", filename, linenr)
 
                         continue
 
@@ -1247,9 +1242,7 @@ class Kconfig(object):
                     else:
                         display_user_val = sym.user_value
 
-                    msg = '{} set more than once. Old value: "{}", new value: "{}".'.format(
-                        _name_and_loc(sym), display_user_val, val
-                    )
+                    msg = f'{_name_and_loc(sym)} set more than once. Old value: "{display_user_val}", new value: "{val}".'
 
                     if display_user_val == val:
                         self._warn_redun_assign(msg, filename, linenr)
@@ -1277,8 +1270,10 @@ class Kconfig(object):
 
         if self._warn_for_undef_assign:
             self._warn(
-                "attempt to assign the value '{}' to the undefined symbol {}"
-                .format(val, name), filename, linenr)
+                f"attempt to assign the value '{val}' to the undefined symbol {name}",
+                filename,
+                linenr,
+            )
 
     def write_autoconf(self, filename,
                        header="/* Generated by Kconfiglib (https://github.com/ulfalizer/Kconfiglib) */\n"):
@@ -1309,22 +1304,19 @@ class Kconfig(object):
                 if sym._write_to_conf:
                     if sym.orig_type in _BOOL_TRISTATE:
                         if val != "n":
-                            f.write("#define {}{}{} 1\n"
-                                    .format(self.config_prefix, sym.name,
-                                            "_MODULE" if val == "m" else ""))
+                            f.write(
+                                f'#define {self.config_prefix}{sym.name}{"_MODULE" if val == "m" else ""} 1\n'
+                            )
 
                     elif sym.orig_type is STRING:
-                        f.write('#define {}{} "{}"\n'
-                                .format(self.config_prefix, sym.name,
-                                        escape(val)))
+                        f.write(f'#define {self.config_prefix}{sym.name} "{escape(val)}"\n')
 
                     else:  # sym.orig_type in _INT_HEX:
                         if sym.orig_type is HEX and \
-                           not val.startswith(("0x", "0X")):
-                            val = "0x" + val
+                               not val.startswith(("0x", "0X")):
+                            val = f"0x{val}"
 
-                        f.write("#define {}{} {}\n"
-                                .format(self.config_prefix, sym.name, val))
+                        f.write(f"#define {self.config_prefix}{sym.name} {val}\n")
 
     def write_config(self, filename=None,
                      header="# Generated by Kconfiglib (https://github.com/ulfalizer/Kconfiglib)\n",
@@ -1385,13 +1377,13 @@ class Kconfig(object):
                     f.write(item.config_string)
 
                 elif expr_value(node.dep) and \
-                     ((item is MENU and expr_value(node.visibility)) or
+                         ((item is MENU and expr_value(node.visibility)) or
                        item is COMMENT):
 
-                    f.write("\n#\n# {}\n#\n".format(node.prompt[0]))
+                    f.write(f"\n#\n# {node.prompt[0]}\n#\n")
 
         if verbose:
-            print("Configuration written to '{}'".format(filename))
+            print(f"Configuration written to '{filename}'")
 
     def write_min_config(self, filename,
                          header="# Generated by Kconfiglib (https://github.com/ulfalizer/Kconfiglib)\n"):
@@ -1515,18 +1507,18 @@ class Kconfig(object):
         self._load_old_vals()
 
         for sym in self.unique_defined_syms:
-            # Note: _write_to_conf is determined when the value is
-            # calculated. This is a hidden function call due to
-            # property magic.
-            val = sym.str_value
-
             # Note: n tristate values do not get written to auto.conf and
             # autoconf.h, making a missing symbol logically equivalent to n
 
             if sym._write_to_conf:
+                # Note: _write_to_conf is determined when the value is
+                # calculated. This is a hidden function call due to
+                # property magic.
+                val = sym.str_value
+
                 if sym._old_val is None and \
-                   sym.orig_type in _BOOL_TRISTATE and \
-                   val == "n":
+                       sym.orig_type in _BOOL_TRISTATE and \
+                       val == "n":
                     # No old value (the symbol was missing or n), new value n.
                     # No change.
                     continue
@@ -1564,7 +1556,7 @@ class Kconfig(object):
 
         with self._open("auto.conf", "w") as f:
             for sym in self.unique_defined_syms:
-                if not (sym.orig_type in _BOOL_TRISTATE and not sym.tri_value):
+                if sym.orig_type not in _BOOL_TRISTATE or sym.tri_value:
                     f.write(sym.config_string)
 
     def _load_old_vals(self):
@@ -1595,11 +1587,11 @@ class Kconfig(object):
                     sym = self.syms[name]
 
                     if sym.orig_type is STRING:
-                        match = _conf_string_match(val)
-                        if not match:
-                            continue
-                        val = unescape(match.group(1))
+                        if match := _conf_string_match(val):
+                            val = unescape(match.group(1))
 
+                        else:
+                            continue
                     self.syms[name]._old_val = val
                 else:
                     # Flag that the symbol no longer exists, in
@@ -1685,7 +1677,7 @@ class Kconfig(object):
         # Don't include the "if " from below to avoid giving confusing error
         # messages
         self._line = s
-        self._tokens = self._tokenize("if " + s)
+        self._tokens = self._tokenize(f"if {s}")
         self._tokens_i = 1  # Skip the 'if' token
 
         return expr_value(self._expect_expr_and_eol())
@@ -1784,21 +1776,26 @@ class Kconfig(object):
         Returns a string with information about the Kconfig object when it is
         evaluated on e.g. the interactive Python prompt.
         """
-        return "<{}>".format(", ".join((
-            "configuration with {} symbols".format(len(self.syms)),
-            'main menu prompt "{}"'.format(self.mainmenu_text),
-            "srctree is current directory" if not self.srctree else
-                'srctree "{}"'.format(self.srctree),
-            'config symbol prefix "{}"'.format(self.config_prefix),
-            "warnings " +
-                ("enabled" if self._warnings_enabled else "disabled"),
-            "printing of warnings to stderr " +
-                ("enabled" if self._warn_to_stderr else "disabled"),
-            "undef. symbol assignment warnings " +
-                ("enabled" if self._warn_for_undef_assign else "disabled"),
-            "redundant symbol assignment warnings " +
-                ("enabled" if self._warn_for_redun_assign else "disabled")
-        )))
+        return "<{}>".format(
+            ", ".join(
+                (
+                    f"configuration with {len(self.syms)} symbols",
+                    f'main menu prompt "{self.mainmenu_text}"',
+                    "srctree is current directory"
+                    if not self.srctree
+                    else f'srctree "{self.srctree}"',
+                    f'config symbol prefix "{self.config_prefix}"',
+                    "warnings "
+                    + ("enabled" if self._warnings_enabled else "disabled"),
+                    "printing of warnings to stderr "
+                    + ("enabled" if self._warn_to_stderr else "disabled"),
+                    "undef. symbol assignment warnings "
+                    + ("enabled" if self._warn_for_undef_assign else "disabled"),
+                    "redundant symbol assignment warnings "
+                    + ("enabled" if self._warn_for_redun_assign else "disabled"),
+                )
+            )
+        )
 
     #
     # Private methods
@@ -1829,11 +1826,19 @@ class Kconfig(object):
                 e = e2
 
             raise _KconfigIOError(
-                e, "Could not open '{}' ({}: {}). Check that the $srctree "
-                   "environment variable ({}) is set correctly."
-                   .format(filename, errno.errorcode[e.errno], e.strerror,
-                           "set to '{}'".format(self.srctree) if self.srctree
-                               else "unset or blank"))
+                e,
+                (
+                    "Could not open '{}' ({}: {}). Check that the $srctree "
+                    "environment variable ({}) is set correctly.".format(
+                        filename,
+                        errno.errorcode[e.errno],
+                        e.strerror,
+                        f"set to '{self.srctree}'"
+                        if self.srctree
+                        else "unset or blank",
+                    )
+                ),
+            )
 
     def _enter_file(self, full_filename, rel_filename):
         # Jumps to the beginning of a sourced Kconfig file, saving the previous
@@ -1873,12 +1878,20 @@ class Kconfig(object):
         for name, _ in self._include_path:
             if name == rel_filename:
                 raise KconfigError(
-                    "\n{}:{}: recursive 'source' of '{}' detected. Check that "
-                    "environment variables are set correctly.\n"
-                    "Include path:\n{}"
-                    .format(self._filename, self._linenr, rel_filename,
-                            "\n".join("{}:{}".format(name, linenr)
-                                      for name, linenr in self._include_path)))
+                    (
+                        "\n{}:{}: recursive 'source' of '{}' detected. Check that "
+                        "environment variables are set correctly.\n"
+                        "Include path:\n{}".format(
+                            self._filename,
+                            self._linenr,
+                            rel_filename,
+                            "\n".join(
+                                f"{name}:{linenr}"
+                                for name, linenr in self._include_path
+                            ),
+                        )
+                    )
+                )
 
         # Note: We already know that the file exists
 
@@ -1886,9 +1899,9 @@ class Kconfig(object):
             self._readline = self._open(full_filename, "r").readline
         except IOError as e:
             raise _KconfigIOError(
-                e, "{}:{}: Could not open '{}' ({}: {})"
-                   .format(self._filename, self._linenr, full_filename,
-                           errno.errorcode[e.errno], e.strerror))
+                e,
+                f"{self._filename}:{self._linenr}: Could not open '{full_filename}' ({errno.errorcode[e.errno]}: {e.strerror})",
+            )
 
         self._filename = rel_filename
         self._linenr = 0
@@ -1977,7 +1990,7 @@ class Kconfig(object):
         if self._parsing_kconfigs:
             self.syms[name] = sym
         else:
-            self._warn("no symbol {} in configuration".format(name))
+            self._warn(f"no symbol {name} in configuration")
 
         return sym
 

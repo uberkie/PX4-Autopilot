@@ -54,7 +54,9 @@ def create_pdf_report(ulog: ULog, multi_instance: int, output_plot_filename: str
         innovation_data = estimator_innovations
         for key in estimator_innovation_variances:
             # append 'var' to the field name such that we can distingush between innov and innov_var
-            innovation_data.update({str('var_'+key): estimator_innovation_variances[key]})
+            innovation_data.update(
+                {str(f'var_{key}'): estimator_innovation_variances[key]}
+            )
 
         innovations_min_length = float('inf')
         for key in estimator_innovations:
@@ -71,7 +73,7 @@ def create_pdf_report(ulog: ULog, multi_instance: int, output_plot_filename: str
             print("estimator_innovations and estimator_innovation_variances are different sizes, adjusting")
             innovation_data_min_length = min(innovations_min_length, variances_min_length)
             for key in innovation_data:
-                innovation_data[key] = innovation_data[key][0:innovation_data_min_length]
+                innovation_data[key] = innovation_data[key][:innovation_data_min_length]
 
         print('found innovation data (merged estimator_innovations + estimator_innovation_variances) instance', multi_instance)
 
@@ -198,7 +200,7 @@ def create_pdf_report(ulog: ULog, multi_instance: int, output_plot_filename: str
 
         # plot control mode summary B
         # construct additional annotations for the airborne plot
-        airborne_annotations = list()
+        airborne_annotations = []
         if np.amin(np.diff(estimator_status_flags['cs_in_air'])) > -0.5:
             airborne_annotations.append(
                 (on_ground_transition_time, 'air to ground transition not detected'))
@@ -267,14 +269,14 @@ def create_pdf_report(ulog: ULog, multi_instance: int, output_plot_filename: str
             try:
                 vehicle_imu_status_data = ulog.get_dataset('vehicle_imu_status', imu_status_instance).data
 
-                imu_status_time = 1e-6 * vehicle_imu_status_data['timestamp']
-
                 if vehicle_imu_status_data['accel_device_id'][0] == estimator_status['accel_device_id'][0]:
 
                     scaled_estimator_status = {'delta_angle_coning_metric': 1000. * vehicle_imu_status_data['delta_angle_coning_metric'],
                                                'gyro_vibration_metric': vehicle_imu_status_data['gyro_vibration_metric'],
                                                'accel_vibration_metric': vehicle_imu_status_data['accel_vibration_metric']
                                               }
+                    imu_status_time = 1e-6 * vehicle_imu_status_data['timestamp']
+
                     data_plot = CheckFlagsPlot(
                         imu_status_time, scaled_estimator_status, [['delta_angle_coning_metric'], ['gyro_vibration_metric'], ['accel_vibration_metric']],
                         x_label='time (sec)',
@@ -365,7 +367,9 @@ def detect_airtime(estimator_status_flags, status_flags_time):
         in_air_transition_time = status_flags_time[in_air_transtion_time_arg]
     elif (np.amax(estimator_status_flags['cs_in_air']) > 0.5):
         in_air_transition_time = np.amin(status_flags_time)
-        print('log starts while in-air at ' + str(round(in_air_transition_time, 1)) + ' sec')
+        print(
+            f'log starts while in-air at {str(round(in_air_transition_time, 1))} sec'
+        )
         b_starts_in_air = True
     else:
         in_air_transition_time = float('NaN')
@@ -376,7 +380,9 @@ def detect_airtime(estimator_status_flags, status_flags_time):
         on_ground_transition_time = status_flags_time[on_ground_transition_time_arg]
     elif (np.amax(estimator_status_flags['cs_in_air']) > 0.5):
         on_ground_transition_time = np.amax(status_flags_time)
-        print('log finishes while in-air at ' + str(round(on_ground_transition_time, 1)) + ' sec')
+        print(
+            f'log finishes while in-air at {str(round(on_ground_transition_time, 1))} sec'
+        )
         b_finishes_in_air = True
     else:
         on_ground_transition_time = float('NaN')

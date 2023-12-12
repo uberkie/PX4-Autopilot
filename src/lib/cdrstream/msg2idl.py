@@ -40,8 +40,7 @@ import sys
 from rosidl_adapter.msg import convert_msg_to_idl
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description=f'Convert px4 .msg files to .idl')
+    parser = argparse.ArgumentParser(description='Convert px4 .msg files to .idl')
     parser.add_argument(
         'interface_files', nargs='+',
         help='The interface files to convert')

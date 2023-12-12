@@ -8,6 +8,7 @@ and vice-versa
 """
 
 
+
 import argparse
 
 parser = argparse.ArgumentParser(
@@ -23,7 +24,7 @@ parser.add_argument('-r','--reverse',
 
 args = parser.parse_args()
 
-if( args.reverse == False ):
+if ( args.reverse == False ):
 
     try:
         ip_parts = [int(x) for x in args.input.split('.')]
@@ -46,6 +47,6 @@ else:
         ip = int(args.input)
     except:
         raise ValueError("Not a valid IP")
-    if(ip < 0):
-        ip = ip + 0x100000000
-    print('{}.{}.{}.{}'.format(ip>>24, (ip>>16)&0xff, (ip>>8)&0xff, ip&0xff))
+    if (ip < 0):
+        ip += 0x100000000
+    print(f'{ip >> 24}.{ip >> 16 & 255}.{ip >> 8 & 255}.{ip & 255}')

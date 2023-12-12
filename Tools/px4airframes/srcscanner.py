@@ -33,6 +33,5 @@ class SourceScanner(object):
                 contents = f.read()
             except:
                 contents = ''
-                print('Failed reading file: %s, skipping content.' % path)
-                pass
+                print(f'Failed reading file: {path}, skipping content.')
         return parser.Parse(path, contents)

@@ -74,7 +74,7 @@ def do_test(port_url, baudrate, test_name):
 
     # run test cmd
     print('\n|======================================================================')
-    cmd = 'tests ' + test_name
+    cmd = f'tests {test_name}'
     print("| Running:", cmd)
     print('|======================================================================')
 
@@ -92,10 +92,9 @@ def do_test(port_url, baudrate, test_name):
         if len(serial_line) > 0:
             if cmd in serial_line:
                 break
-        else:
-            if time.monotonic() > timeout_start + timeout:
-                print("Error, timeout waiting for command echo")
-                break
+        elif time.monotonic() > timeout_start + timeout:
+            print("Error, timeout waiting for command echo")
+            break
 
     # print results, wait for final result (PASSED or FAILED)
     timeout = 300  # 5 minutes
@@ -108,16 +107,16 @@ def do_test(port_url, baudrate, test_name):
         if len(serial_line) > 0:
             print_line(serial_line)
 
-            if test_name + " PASSED" in serial_line:
+            if f"{test_name} PASSED" in serial_line:
                 ser.close()
                 return True
-            elif test_name + " FAILED" in serial_line:
+            elif f"{test_name} FAILED" in serial_line:
                 ser.close()
                 return False
         else:
             if time.monotonic() > timeout_start + timeout:
                 print("Error, timeout")
-                print(test_name + f" {COLOR_RED}FAILED{COLOR_RESET}")
+                print(f"{test_name} {COLOR_RED}FAILED{COLOR_RESET}")
                 ser.close()
                 return False
 

@@ -97,7 +97,8 @@ def main():
     parser = srcparser.SourceParser()
 
     # Scan directories, and parse the files
-    if args.verbose: print("Scanning source path " + args.airframes_path)
+    if args.verbose:
+        print(f"Scanning source path {args.airframes_path}")
     if not scanner.ScanDir(args.airframes_path, parser):
         sys.exit(1)
     # We can't validate yet
@@ -107,26 +108,30 @@ def main():
 
     # Output to XML file
     if args.xml:
-        if args.verbose: print("Creating XML file " + args.xml)
+        if args.verbose:
+            print(f"Creating XML file {args.xml}")
         out = xmlout.XMLOutput(airframe_groups, args.board)
         out.Save(args.xml)
 
     # Output to markdown file
     if args.markdown:
-        if args.verbose: print("Creating markdown file " + args.markdown)
+        if args.verbose:
+            print(f"Creating markdown file {args.markdown}")
         out = markdownout.MarkdownTablesOutput(airframe_groups, args.board, args.image_path)
         out.Save(args.markdown)
 
     # Output to start scripts
     if args.start_script:
         # Airframe start script
-        if args.verbose: print("Creating start script " + args.start_script)
+        if args.verbose:
+            print(f"Creating start script {args.start_script}")
         out = rcout.RCOutput(airframe_groups, args.board)
         out.Save(args.start_script)
 
         # Airframe post-start script
-        post_start_script = args.start_script + '.post'
-        if args.verbose: print("Creating post-start script " + post_start_script)
+        post_start_script = f'{args.start_script}.post'
+        if args.verbose:
+            print(f"Creating post-start script {post_start_script}")
         out_post = rcout.RCOutput(airframe_groups, args.board, post_start=True)
         out_post.Save(post_start_script)
 

@@ -79,13 +79,9 @@ def main():
 
     # Scan directories, and parse the files
     if args.verbose:
-        print("Scanning source path/files " + str(args.src_path))
+        print(f"Scanning source path/files {str(args.src_path)}")
 
-    # canonicalize + remove duplicates
-    src_paths = set()
-    for path in args.src_path:
-        src_paths.add(os.path.realpath(path))
-
+    src_paths = {os.path.realpath(path) for path in args.src_path}
     if not scanner.ScanDir(src_paths, parser):
         sys.exit(1)
 
@@ -93,7 +89,8 @@ def main():
 
     # Output to JSON file
     if args.json:
-        if args.verbose: print("Creating Json file " + args.json)
+        if args.verbose:
+            print(f"Creating Json file {args.json}")
         cur_dir = os.path.dirname(os.path.realpath(__file__))
         out = jsonout.JsonOutput(events)
         out.save(args.json)

@@ -15,7 +15,7 @@ class SourceScanner(object):
         Scans provided path and passes all found contents to the parser using
         parser.Parse method.
         """
-        extensions = tuple([".cpp", ".c"])
+        extensions = ".cpp", ".c"
         for srcdir in srcdirs:
             for dirname, dirnames, filenames in os.walk(srcdir):
                 for filename in filenames:
@@ -25,7 +25,7 @@ class SourceScanner(object):
                             if not self.ScanFile(path, parser):
                                 return False
                         except:
-                            print(("Exception in file %s" % path))
+                            print(f"Exception in file {path}")
                             raise
         return True
 
@@ -37,7 +37,7 @@ class SourceScanner(object):
         # Extract the scope: it is the directory within the repo. Either it
         # starts directly with 'src/module/abc', or it has the form 'x/y/z/src/module/abc'.
         # The output is 'module/abc' in both cases.
-        prefix = "^(|.*" + os.path.sep + ")src" + os.path.sep
+        prefix = f"^(|.*{os.path.sep})src{os.path.sep}"
         scope = re.sub(prefix.replace("\\", "/"), "", os.path.dirname(os.path.relpath(path)).replace("\\", "/"))
 
         with codecs.open(path, 'r', 'utf-8') as f:
@@ -45,6 +45,5 @@ class SourceScanner(object):
                 contents = f.read()
             except:
                 contents = ''
-                print(('Failed reading file: %s, skipping content.' % path))
-                pass
+                print(f'Failed reading file: {path}, skipping content.')
         return parser.Parse(scope, contents)

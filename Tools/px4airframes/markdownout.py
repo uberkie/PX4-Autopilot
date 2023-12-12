@@ -55,7 +55,7 @@ div.frame_variant td, div.frame_variant th {
         type_set = set()
 
         if len(image_path) > 0 and image_path[-1] != '/':
-            image_path = image_path + '/'
+            image_path = f'{image_path}/'
 
         for group in groups:
             if group.GetClass() not in type_set:
@@ -86,7 +86,7 @@ div.frame_variant td, div.frame_variant th {
 
             if has_common_outputs:
                 outputs_common = ''.join(['<li><b>{:}</b>: {:}</li>'.format(k[0], k[1]) \
-                    for k in all_outputs if all_outputs[k] == num_configs])
+                        for k in all_outputs if all_outputs[k] == num_configs])
                 result += '<table>\n'
                 result += ' <thead>\n'
                 result += '   <tr><th>Common Outputs</th></tr>\n'
@@ -108,19 +108,19 @@ div.frame_variant td, div.frame_variant th {
                 if not self.IsExcluded(airframe, board):
                     name = airframe.GetName()
                     airframe_id = airframe.GetId()
-                    airframe_id_entry = '<p><code>SYS_AUTOSTART</code> = %s</p>' % (airframe_id)
+                    airframe_id_entry = f'<p><code>SYS_AUTOSTART</code> = {airframe_id}</p>'
                     maintainer = airframe.GetMaintainer()
                     maintainer_entry = ''
                     if maintainer != '':
-                        maintainer_entry = 'Maintainer: %s' % (html.escape(maintainer))
+                        maintainer_entry = f'Maintainer: {html.escape(maintainer)}'
                     url = airframe.GetFieldValue('url')
-                    name_anchor='%s_%s_%s' % (group.GetClass(),group.GetType(),name)
+                    name_anchor = f'{group.GetClass()}_{group.GetType()}_{name}'
                     name_anchor=name_anchor.replace(' ','_').lower()
                     name_anchor=name_anchor.replace('"','_').lower()
-                    name_anchor='id="%s"' % name_anchor
+                    name_anchor = f'id="{name_anchor}"'
                     name_entry = name
                     if url != '':
-                        name_entry = '<a href="%s">%s</a>' % (url, name)
+                        name_entry = f'<a href="{url}">{name}</a>'
                     outputs = '<ul>'
                     has_outputs = False
                     for output_name in airframe.GetOutputCodes():
@@ -128,7 +128,7 @@ div.frame_variant td, div.frame_variant th {
                         valstrs = value.split(";")
                         key_value_pair = (output_name, value)
                         if all_outputs[key_value_pair] < num_configs:
-                            outputs += '<li><b>%s</b>: %s</li>' % (output_name, value)
+                            outputs += f'<li><b>{output_name}</b>: {value}</li>'
                             has_outputs = True
 
                         for attrib in valstrs[1:]:
@@ -137,7 +137,7 @@ div.frame_variant td, div.frame_variant th {
                             #print(output_name,value, attribstrs[0].strip(),attribstrs[1].strip())
                     outputs += '</ul>'
                     if has_outputs:
-                        outputs_entry = '<p><b>Specific Outputs:</b>' + outputs + '</p>'
+                        outputs_entry = f'<p><b>Specific Outputs:</b>{outputs}</p>'
                     else:
                         outputs_entry = ''
 
@@ -152,10 +152,11 @@ div.frame_variant td, div.frame_variant th {
         self.output = result
 
     def IsExcluded(self, airframe, board):
-        for code in airframe.GetArchCodes():
-            if "CONFIG_ARCH_BOARD_{0}".format(code) == board and airframe.GetArchValue(code) == "exclude":
-                return True
-        return False
+        return any(
+            "CONFIG_ARCH_BOARD_{0}".format(code) == board
+            and airframe.GetArchValue(code) == "exclude"
+            for code in airframe.GetArchCodes()
+        )
 
     def Save(self, filename):
         with codecs.open(filename, 'w', 'utf-8') as f:

@@ -66,8 +66,7 @@ def get_last_log():
         except KeyError:
             log_path = os.path.join(os.environ['HOME'], '.ros/log')
     last_log_dir = sorted(glob.glob(os.path.join(log_path, '*')))[-1]
-    last_log = sorted(glob.glob(os.path.join(last_log_dir, '*.ulg')))[-1]
-    return last_log
+    return sorted(glob.glob(os.path.join(last_log_dir, '*.ulg')))[-1]
 
 
 def read_mission(mission_filename):
@@ -89,26 +88,25 @@ def read_plan_file(f):
     if 'mission' in d:
         d = d['mission']
 
-    if 'items' in d:
-        for wp in d['items']:
-            yield Waypoint(
-                is_current=False,
-                frame=int(wp['frame']),
-                command=int(wp['command']),
-                param1=float('nan'
-                             if wp['params'][0] is None else wp['params'][0]),
-                param2=float('nan'
-                             if wp['params'][1] is None else wp['params'][1]),
-                param3=float('nan'
-                             if wp['params'][2] is None else wp['params'][2]),
-                param4=float('nan'
-                             if wp['params'][3] is None else wp['params'][3]),
-                x_lat=float(wp['params'][4]),
-                y_long=float(wp['params'][5]),
-                z_alt=float(wp['params'][6]),
-                autocontinue=bool(wp['autoContinue']))
-    else:
+    if 'items' not in d:
         raise IOError("no mission items")
+    for wp in d['items']:
+        yield Waypoint(
+            is_current=False,
+            frame=int(wp['frame']),
+            command=int(wp['command']),
+            param1=float('nan'
+                         if wp['params'][0] is None else wp['params'][0]),
+            param2=float('nan'
+                         if wp['params'][1] is None else wp['params'][1]),
+            param3=float('nan'
+                         if wp['params'][2] is None else wp['params'][2]),
+            param4=float('nan'
+                         if wp['params'][3] is None else wp['params'][3]),
+            x_lat=float(wp['params'][4]),
+            y_long=float(wp['params'][5]),
+            z_alt=float(wp['params'][6]),
+            autocontinue=bool(wp['autoContinue']))
 
 
 class MavrosMissionTest(MavrosTestCommon):
@@ -261,20 +259,24 @@ class MavrosMissionTest(MavrosTestCommon):
         rospy.loginfo("run mission {0}".format(self.mission_name))
         for index, waypoint in enumerate(wps):
             # only check position for waypoints where this makes sense
-            if (waypoint.frame == Waypoint.FRAME_GLOBAL_REL_ALT or
-                    waypoint.frame == Waypoint.FRAME_GLOBAL):
+            if waypoint.frame == Waypoint.FRAME_GLOBAL_REL_ALT:
                 alt = waypoint.z_alt
-                if waypoint.frame == Waypoint.FRAME_GLOBAL_REL_ALT:
-                    alt += self.altitude.amsl - self.altitude.relative
+                alt += self.altitude.amsl - self.altitude.relative
 
                 self.reach_position(waypoint.x_lat, waypoint.y_long, alt, 60,
                                     index)
 
+            elif waypoint.frame == Waypoint.FRAME_GLOBAL:
+                alt = waypoint.z_alt
+                self.reach_position(waypoint.x_lat, waypoint.y_long, alt, 60,
+                                    index)
+
             # check if VTOL transition happens if applicable
-            if (waypoint.command == mavutil.mavlink.MAV_CMD_NAV_VTOL_TAKEOFF or
-                    waypoint.command == mavutil.mavlink.MAV_CMD_NAV_VTOL_LAND
-                    or waypoint.command ==
-                    mavutil.mavlink.MAV_CMD_DO_VTOL_TRANSITION):
+            if waypoint.command in [
+                mavutil.mavlink.MAV_CMD_NAV_VTOL_TAKEOFF,
+                mavutil.mavlink.MAV_CMD_NAV_VTOL_LAND,
+                mavutil.mavlink.MAV_CMD_DO_VTOL_TRANSITION,
+            ]:
                 transition = waypoint.param1  # used by MAV_CMD_DO_VTOL_TRANSITION
                 if waypoint.command == mavutil.mavlink.MAV_CMD_NAV_VTOL_TAKEOFF:  # VTOL takeoff implies transition to FW
                     transition = mavutil.mavlink.MAV_VTOL_STATE_FW
@@ -284,8 +286,10 @@ class MavrosMissionTest(MavrosTestCommon):
                 self.wait_for_vtol_state(transition, 60, index)
 
             # after reaching position, wait for landing detection if applicable
-            if (waypoint.command == mavutil.mavlink.MAV_CMD_NAV_VTOL_LAND or
-                    waypoint.command == mavutil.mavlink.MAV_CMD_NAV_LAND):
+            if waypoint.command in [
+                mavutil.mavlink.MAV_CMD_NAV_VTOL_LAND,
+                mavutil.mavlink.MAV_CMD_NAV_LAND,
+            ]:
                 self.wait_for_landed_state(
                     mavutil.mavlink.MAV_LANDED_STATE_ON_GROUND, 120, index)
 
@@ -317,5 +321,5 @@ if __name__ == '__main__':
 
     name = "mavros_mission_test"
     if len(sys.argv) > 1:
-        name += "-%s" % sys.argv[1]
+        name += f"-{sys.argv[1]}"
     rostest.rosrun(PKG, name, MavrosMissionTest)

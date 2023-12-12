@@ -20,27 +20,27 @@ version_file = args.version_file
 version_dir = ''
 if version_file is not None:
     for line in open(version_file, "r"):
-        version_search = re.search('PX4_GIT_TAG_OR_BRANCH_NAME\s+"(.+)"', line)
-        if version_search:
+        if version_search := re.search(
+            'PX4_GIT_TAG_OR_BRANCH_NAME\s+"(.+)"', line
+        ):
             version_dir = version_search.group(1)
             break
 
 
 def save_compressed(filename):
     #create lzma compressed version
-    xz_filename=filename+'.xz'
+    xz_filename = f'{filename}.xz'
     with lzma.open(xz_filename, 'wt', preset=9) as f:
         with open(filename, 'r') as content_file:
             f.write(content_file.read())
 
-component_general = {}
-component_general['version'] = 1
+component_general = {'version': 1}
 
 def create_table():
     a = []
     for i in range(256):
         k = i
-        for j in range(8):
+        for _ in range(8):
             if k & 1:
                 k ^= 0x1db710640
             k >>= 1

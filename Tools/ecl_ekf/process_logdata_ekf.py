@@ -133,12 +133,9 @@ def process_logdata_ekf(
 
             file.write("name,value,description\n")
 
-            # loop through the test results dictionary and write each entry on a separate row, with data comma separated
-            # save data in alphabetical order
-            key_list = list(test_results.keys())
-            key_list.sort()
+            key_list = sorted(test_results.keys())
             for key in key_list:
-                file.write(key + "," + str(test_results[key][0]) + "," + test_results[key][1] + "\n")
+                file.write(f"{key},{str(test_results[key][0])},{test_results[key][1]}" + "\n")
         print('Test results written to {:s}-{:d}.mdat.csv'.format(filename, multi_instance))
 
         if plot:
@@ -169,7 +166,7 @@ def main() -> None:
             args.filename, check_level_dict_filename, check_table_filename,
             plot=not args.no_plots, sensor_safety_margins=not args.no_sensor_safety_margin)
     except Exception as e:
-        print(str(e))
+        print(e)
         sys.exit(-1)
 
     # print master test status to console

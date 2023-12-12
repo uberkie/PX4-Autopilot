@@ -38,6 +38,7 @@ Generates c/cpp header/source files for uorb topics from .msg
 message files
 """
 
+
 import os
 import argparse
 import re
@@ -46,7 +47,7 @@ import sys
 try:
     import em
 except ImportError as e:
-    print("Failed to import em: " + str(e))
+    print(f"Failed to import em: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user empy")
@@ -56,7 +57,7 @@ except ImportError as e:
 try:
     import genmsg.template_tools
 except ImportError as e:
-    print("Failed to import genmsg: " + str(e))
+    print(f"Failed to import genmsg: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user pyros-genmsg")
@@ -81,21 +82,19 @@ def get_topics(filename):
     """
     Get TOPICS names from a "# TOPICS" line
     """
-    ofile = open(filename, 'r')
-    text = ofile.read()
-    result = []
-    for each_line in text.split('\n'):
-        if each_line.startswith(TOPICS_TOKEN):
-            topic_names_str = each_line.strip()
-            topic_names_str = topic_names_str.replace(TOPICS_TOKEN, "")
-            topic_names_list = topic_names_str.split(" ")
-            for topic in topic_names_list:
-                # topic name PascalCase (file name) to snake_case (topic name)
-                topic_name = re.sub(r'(?<!^)(?=[A-Z])', '_', topic).lower()
-                result.append(topic_name)
-    ofile.close()
-
-    if len(result) == 0:
+    with open(filename, 'r') as ofile:
+        text = ofile.read()
+        result = []
+        for each_line in text.split('\n'):
+            if each_line.startswith(TOPICS_TOKEN):
+                topic_names_str = each_line.strip()
+                topic_names_str = topic_names_str.replace(TOPICS_TOKEN, "")
+                topic_names_list = topic_names_str.split(" ")
+                for topic in topic_names_list:
+                    # topic name PascalCase (file name) to snake_case (topic name)
+                    topic_name = re.sub(r'(?<!^)(?=[A-Z])', '_', topic).lower()
+                    result.append(topic_name)
+    if not result:
         # topic name PascalCase (file name) to snake_case (topic name)
         file_base_name = os.path.basename(filename).replace(".msg", "")
         topic_name = re.sub(r'(?<!^)(?=[A-Z])', '_', file_base_name).lower()
@@ -117,10 +116,9 @@ def generate_output_from_file(format_idx, filename, outputdir, package, template
 
     spec = genmsg.msg_loader.load_msg_from_file(msg_context, filename, full_type_name)
 
-    field_name_and_type = {}
-    for field in spec.parsed_fields():
-        field_name_and_type.update({field.name: field.type})
-
+    field_name_and_type = {
+        field.name: field.type for field in spec.parsed_fields()
+    }
     # assert if the timestamp field exists
     try:
         assert 'timestamp' in field_name_and_type
@@ -181,27 +179,29 @@ def generate_by_template(output_file, template_file, em_globals):
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
 
-    ofile = open(output_file, 'w')
-    # todo, reuse interpreter
-    interpreter = em.Interpreter(output=ofile, globals=em_globals, options={
-                                 em.RAW_OPT: True, em.BUFFERED_OPT: True})
-    try:
-        interpreter.file(open(template_file))
-    except OSError as e:
-        ofile.close()
-        os.remove(output_file)
-        raise
-    interpreter.shutdown()
-    ofile.close()
+    with open(output_file, 'w') as ofile:
+        # todo, reuse interpreter
+        interpreter = em.Interpreter(output=ofile, globals=em_globals, options={
+                                     em.RAW_OPT: True, em.BUFFERED_OPT: True})
+        try:
+            interpreter.file(open(template_file))
+        except OSError as e:
+            ofile.close()
+            os.remove(output_file)
+            raise
+        interpreter.shutdown()
     return True
 
 
 def generate_topics_list_file_from_files(files, outputdir, template_filename, templatedir, all_topics):
-    # generate cpp file with topics list
-    filenames = []
-    for filename in [os.path.basename(p) for p in files if os.path.basename(p).endswith(".msg")]:
-        filenames.append(re.sub(r'(?<!^)(?=[A-Z])', '_', filename).lower())
-
+    filenames = [
+        re.sub(r'(?<!^)(?=[A-Z])', '_', filename).lower()
+        for filename in [
+            os.path.basename(p)
+            for p in files
+            if os.path.basename(p).endswith(".msg")
+        ]
+    ]
     tl_globals = {"msgs": filenames, "all_topics": all_topics}
     tl_template_file = os.path.join(templatedir, template_filename)
     tl_out_file = os.path.join(outputdir, template_filename.replace(".em", ""))
@@ -211,7 +211,7 @@ def generate_topics_list_file_from_files(files, outputdir, template_filename, te
 
 def append_to_include_path(path_to_append, curr_include, package):
     for p in path_to_append:
-        curr_include.append('%s:%s' % (package, p))
+        curr_include.append(f'{package}:{p}')
 
 
 if __name__ == "__main__":

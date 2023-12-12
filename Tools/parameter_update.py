@@ -58,14 +58,12 @@ Usage:
         rg -l '\.[gs]et\(|px4::params::' -tcpp | python parameter_update.py
 """
 
+
 import re
 import fileinput
 import sys
 
-filenames = []
-for filename in sys.stdin:
-    filenames.append(filename.rstrip())
-
+filenames = [filename.rstrip() for filename in sys.stdin]
 pattern = r'^.*<px4::params::([A-Za-z0-9_]+)>\)\s*([A-Za-z0-9_]+)[,\s]?.*$'
 regex = re.compile(pattern, re.MULTILINE)
 
@@ -77,11 +75,11 @@ for filename in filenames:
     with open(filename, 'r') as f:
         text = f.read()
         for match in regex.finditer(text):
-            replace_dict[match.group(2)] = "_param_" + match.group(1).strip().lower()
+            replace_dict[match.group(2)] = f"_param_{match.group(1).strip().lower()}"
 
 print("The following variables will be changed")
-for old_var in replace_dict:
-    print("{} -> {}".format(old_var, replace_dict[old_var]))
+for old_var, value in replace_dict.items():
+    print(f"{old_var} -> {value}")
 
 for filename in filenames:
     print(filename)

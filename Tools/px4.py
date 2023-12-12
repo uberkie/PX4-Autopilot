@@ -87,10 +87,7 @@ def get_version():
 
 
 # Detect python version
-if sys.version_info[0] < 3:
-    runningPython3 = False
-else:
-    runningPython3 = True
+runningPython3 = sys.version_info[0] >= 3
 
 
 def main():

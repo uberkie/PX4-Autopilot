@@ -22,7 +22,7 @@ def make_public_key_h_file(signing_key,key_name):
         public_key_c+= ', '
         if((i+1)%8==0):
             public_key_c+= '\n'
-    with open(key_name+'.pub' ,mode='w') as f:
+    with open(f'{key_name}.pub', mode='w') as f:
         f.write("//Public key to verify signed binaries")
         f.write(public_key_c)
 
@@ -33,19 +33,18 @@ def make_key_file(signing_key, key_name):
     Do not publish your private key!!
     """
 
-    key_file = Path(key_name+'.json')
+    key_file = Path(f'{key_name}.json')
     if key_file.is_file():
         print("ATTENTION: key.json already exists, are you sure you want to overwrite it?")
         print("Remove file and run script again.")
         print("Script aborted!")
         sys.exit(1)
 
-    keys={}
-    keys["date"] = time.asctime()
+    keys = {"date": time.asctime()}
     keys["public"] = (signing_key.verify_key.encode(encoder=nacl.encoding.HexEncoder)).decode()
     keys["private"] = binascii.hexlify(signing_key._seed).decode()
     #print (keys)
-    with open(key_name+'.json', "w") as write_file:
+    with open(f'{key_name}.json', "w") as write_file:
         json.dump(keys, write_file)
     return keys
 

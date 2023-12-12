@@ -83,8 +83,7 @@ def analyse_ekf(
 
 
 def find_checks_that_apply(
-    estimator_status_flags: dict, estimator_status: dict, pos_checks_when_sensors_not_fused: bool = False) ->\
-        Tuple[List[str], List[str]]:
+    estimator_status_flags: dict, estimator_status: dict, pos_checks_when_sensors_not_fused: bool = False) -> Tuple[List[str], List[str]]:
     """
     finds the checks that apply and stores them in lists for the std checks and the innovation
     fail checks.
@@ -94,28 +93,17 @@ def find_checks_that_apply(
     :return: a tuple of two lists that contain strings for the std checks and for the innovation
     fail checks.
     """
-    sensor_checks = list()
-    innov_fail_checks = list()
-
-    # Height Sensor Checks
-    sensor_checks.append('hgt')
-    innov_fail_checks.append('posv')
-
+    sensor_checks = ['hgt']
+    innov_fail_checks = ['posv']
     # Magnetometer Sensor Checks
     if (np.amax(estimator_status_flags['cs_yaw_align']) > 0.5):
         sensor_checks.append('mag')
 
-        innov_fail_checks.append('magx')
-        innov_fail_checks.append('magy')
-        innov_fail_checks.append('magz')
-        innov_fail_checks.append('yaw')
-
+        innov_fail_checks.extend(('magx', 'magy', 'magz', 'yaw'))
     # Velocity Sensor Checks
     if (np.amax(estimator_status_flags['cs_gps']) > 0.5):
         sensor_checks.append('vel')
-        innov_fail_checks.append('velh')
-        innov_fail_checks.append('velv')
-
+        innov_fail_checks.extend(('velh', 'velv'))
     # Position Sensor Checks
     if (pos_checks_when_sensors_not_fused or (np.amax(estimator_status_flags['cs_gps']) > 0.5)
         or (np.amax(estimator_status_flags['cs_ev_pos']) > 0.5)):
@@ -135,9 +123,7 @@ def find_checks_that_apply(
 
     # optical flow sensor checks
     if (np.amax(estimator_status_flags['cs_opt_flow']) > 0.5):
-        innov_fail_checks.append('ofx')
-        innov_fail_checks.append('ofy')
-
+        innov_fail_checks.extend(('ofx', 'ofy'))
     return sensor_checks, innov_fail_checks
 
 

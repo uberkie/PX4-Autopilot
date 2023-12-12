@@ -33,12 +33,12 @@ if __name__ == "__main__":
 
     for msg_file in msg_files:
         msg_name = os.path.splitext(msg_file)[0]
-        output_file = os.path.join(output_dir, msg_name+'.md')
+        output_file = os.path.join(output_dir, f'{msg_name}.md')
         msg_filename = os.path.join(msg_path, msg_file)
         print("{:} -> {:}".format(msg_filename, output_file))
 
         #Format msg url
-        msg_url="[source file](https://github.com/PX4/PX4-Autopilot/blob/main/msg/%s)" % msg_file
+        msg_url = f"[source file](https://github.com/PX4/PX4-Autopilot/blob/main/msg/{msg_file})"
 
         msg_description = ""
         summary_description = ""
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         with open(msg_filename, 'r') as lineparser:
             line = lineparser.readline()
             while line.startswith('#') or (line.strip() == ''):
-                print('DEBUG: line: %s' % line)
+                print(f'DEBUG: line: {line}')
                 line=line[1:].strip()+'\n'
                 stripped_line=line.strip()
                 if msg_description and not summary_description and stripped_line=='':
@@ -58,8 +58,8 @@ if __name__ == "__main__":
             msg_description=msg_description.strip()
             if not summary_description and msg_description:
                 summary_description = msg_description
-            print('msg_description: Z%sZ' % msg_description)
-            print('summary_description: Z%sZ' % summary_description)
+            print(f'msg_description: Z{msg_description}Z')
+            print(f'summary_description: Z{summary_description}Z')
             summary_description
         msg_contents = ""
         #Get msg contents (read the file)
@@ -81,9 +81,9 @@ if __name__ == "__main__":
         with open(output_file, 'w') as content_file:
             content_file.write(markdown_output)
 
-        readme_markdown_file_link='- [%s](%s.md)' % (msg_name,msg_name)
+        readme_markdown_file_link = f'- [{msg_name}]({msg_name}.md)'
         if summary_description:
-            readme_markdown_file_link+=" — %s" % summary_description
+            readme_markdown_file_link += f" — {summary_description}"
         filelist_in_markdown+=readme_markdown_file_link+"\n"
 
     # Write out the README.md file
