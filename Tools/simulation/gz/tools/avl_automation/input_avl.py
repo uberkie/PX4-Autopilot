@@ -109,8 +109,7 @@ def main():
 			all_lines = file.readlines()
 			file.close()
 
-		it = 0
-		for line in all_lines:
+		for it, line in enumerate(all_lines):
 			if "cp $DIR_PATH/$CUSTOM_MODEL.avl" in line:
 				new_line = f'cp $DIR_PATH/$CUSTOM_MODEL.avl {inputs.avl_path}Avl/runs\n'
 				all_lines[it] = new_line
@@ -122,8 +121,6 @@ def main():
 			if "cd" in line and "/Avl/runs" in line:
 				new_line = f'cd {inputs.avl_path}Avl/runs\n'
 				all_lines[it] = new_line
-			it += 1
-
 		with open("./process.sh", "w") as file:
 			file.writelines(all_lines)
 			file.close()
@@ -135,7 +132,7 @@ def main():
 	airframes = ['cessna','standard_vtol','custom']
 	plane_name = yaml_data['vehicle_name']
 	frame_type = yaml_data['frame_type']
-	if not frame_type in airframes:
+	if frame_type not in airframes:
 		raise ValueError("\nThis is not a valid airframe, please choose a valid airframe. \n")
 
 	# Parameters that need to be provided:
@@ -290,7 +287,7 @@ def main():
 
 
    	# Calculation of Aspect Ratio (AR) and Mean Aerodynamic Chord (mac)
-	AR = str((float(span)*float(span))/float(area))
+	AR = str(float(span)**2 / float(area))
 	mac = str((2/3)*(float(area)/float(span)))
 
 	# Call shell script that will pass the generated .avl file to AVL

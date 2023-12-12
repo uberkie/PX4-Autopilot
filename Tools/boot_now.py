@@ -48,11 +48,11 @@ args = parser.parse_args()
 REBOOT          = b'\x30'
 EOC             = b'\x20'
 
-print("Sending reboot to %s" % args.port)
+print(f"Sending reboot to {args.port}")
 try:
         port = serial.Serial(args.port, args.baud, timeout=0.5)
 except Exception:
-        print("Unable to open %s" % args.port)
+        print(f"Unable to open {args.port}")
         sys.exit(1)
 port.write(REBOOT + EOC)
 port.close()

@@ -14,7 +14,7 @@ class SourceScanner(object):
         Scans provided path and passes all found contents to the parser using
         parser.Parse method.
         """
-        extensions = tuple([".cpp"])
+        extensions = (".cpp", )
         for srcdir in srcdirs:
             if os.path.isfile(srcdir):
                 if not self.ScanFile(srcdir, parser):
@@ -28,7 +28,7 @@ class SourceScanner(object):
                                 if not self.ScanFile(path, parser):
                                     return False
                             except:
-                                print(("Exception in file %s" % path))
+                                print(f"Exception in file {path}")
                                 raise
         return True
 
@@ -43,10 +43,9 @@ class SourceScanner(object):
                 contents = f.read()
             except:
                 contents = ''
-                print('Failed reading file: %s, skipping content.' % path)
-                pass
+                print(f'Failed reading file: {path}, skipping content.')
         try:
             return parser.Parse(contents, path)
         except Exception as e:
-            print("Exception while parsing file {}".format(path))
+            print(f"Exception while parsing file {path}")
             raise

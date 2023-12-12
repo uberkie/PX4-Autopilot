@@ -29,27 +29,21 @@ def find_matching_brackets(brackets, s, verbose):
     raise Exception('Failed to find opening/closing brackets in {:}'.format(s))
 
 def extract_timer(line):
-    # Try format: initIOTimer(Timer::Timer5, DMA{DMA::Index1, DMA::Stream0, DMA::Channel6}),
-    search = re.search('Timer::([0-9a-zA-Z_]+)[,\)]', line, re.IGNORECASE)
-    if search:
+    if search := re.search('Timer::([0-9a-zA-Z_]+)[,\)]', line, re.IGNORECASE):
         return search.group(1), 'generic'
 
-    # nxp rt1062 format: initIOPWM(PWM::FlexPWM2),
-    search = re.search('PWM::Flex([0-9a-zA-Z_]+)[,\)]', line, re.IGNORECASE)
-    if search:
+    if search := re.search(
+        'PWM::Flex([0-9a-zA-Z_]+)[,\)]', line, re.IGNORECASE
+    ):
         return search.group(1), 'imxrt'
 
     return None, 'unknown'
 
 def extract_timer_from_channel(line, num_channels_already_found):
-    # Try format: initIOTimerChannel(io_timers, {Timer::Timer5, Timer::Channel1}, {GPIO::PortA, GPIO::Pin0}),
-    search = re.search('Timer::([0-9a-zA-Z_]+), ', line, re.IGNORECASE)
-    if search:
+    if search := re.search('Timer::([0-9a-zA-Z_]+), ', line, re.IGNORECASE):
         return search.group(1)
 
-    # nxp rt1062 format: initIOTimerChannel(io_timers, {PWM::PWM2_PWM_A, PWM::Submodule0}, IOMUX::Pad::GPIO_B0_06),
-    search = re.search('PWM::(PWM[0-9]+)[_,\)]', line, re.IGNORECASE)
-    if search:
+    if search := re.search('PWM::(PWM[0-9]+)[_,\)]', line, re.IGNORECASE):
         # imxrt uses a 1:1 timer group to channel association
         return str(num_channels_already_found)
 
@@ -82,15 +76,14 @@ def get_timer_groups(timer_config_file, verbose=False):
             dshot_support = {str(i): False for i in range(max_num_channels)}
             break
 
-        if timer:
-            if verbose: print('found timer def: {:}'.format(timer))
-            dshot_support[timer] = 'DMA' in line
-            timers.append(timer)
-        else:
+        if not timer:
             # Make sure we don't miss anything (e.g. for different syntax) or misparse (e.g. multi-line comments)
             raise Exception('Unparsed timer in line: {:}'.format(line))
 
 
+        if verbose: print('found timer def: {:}'.format(timer))
+        dshot_support[timer] = 'DMA' in line
+        timers.append(timer)
     # channels
     channels_start_marker = 'timer_io_channels_t timer_io_channels'
     channels_start = timer_config.find(channels_start_marker)
@@ -108,27 +101,22 @@ def get_timer_groups(timer_config_file, verbose=False):
         if len(line) == 0 or line.startswith('//'):
             continue
 
-        if verbose: print('--'+line+'--')
-        timer = extract_timer_from_channel(line, len(channel_timers))
-
-        if timer:
-            if verbose: print('Found timer: {:} in channel line {:}'.format(timer, line))
-            channel_types.append('cap' if 'capture' in line.lower() else 'pwm')
-            channel_timers.append(timer)
-        else:
+        if verbose:
+            print(f'--{line}--')
+        if not (
+            timer := extract_timer_from_channel(line, len(channel_timers))
+        ):
             # Make sure we don't miss anything (e.g. for different syntax) or misparse (e.g. multi-line comments)
             raise Exception('Unparsed channel in line: {:}'.format(line))
 
-    if len(channel_timers) == 0:
+        if verbose: print('Found timer: {:} in channel line {:}'.format(timer, line))
+        channel_types.append('cap' if 'capture' in line.lower() else 'pwm')
+        channel_timers.append(timer)
+    if not channel_timers:
         raise Exception('No channels found in "{:}"'.format(channels))
 
     groups = [(timers.index(k), len(list(g)), dshot_support[k]) for k, g in groupby(channel_timers)]
-    outputs = {
-        'types': channel_types,
-        'groups': groups
-        }
-
-    return outputs
+    return {'types': channel_types, 'groups': groups}
 
 def get_output_groups(timer_groups, param_prefix="PWM_MAIN",
         channel_labels=["PWM Main", "PWM Capture"],
@@ -147,7 +135,7 @@ def get_output_groups(timer_groups, param_prefix="PWM_MAIN",
 
         # check for capture vs normal pins for the label
         types = timer_groups['types'][instance_start-1:instance_start+group_count-1]
-        if not all(types[0] == t for t in types):
+        if any(types[0] != t for t in types):
             # Should this ever be needed, we can extend this script to handle that
             raise Exception('Implementation requires all channel types for a timer to be equal (types: {:})'.format(types))
         if types[0] == 'pwm':
@@ -159,9 +147,9 @@ def get_output_groups(timer_groups, param_prefix="PWM_MAIN",
 
         channel_label = channel_labels[channel_type_idx]
         channel_type_instance = instance_start_label[channel_type_idx]
-        group_label = channel_label + ' ' + str(channel_type_instance)
+        group_label = f'{channel_label} {str(channel_type_instance)}'
         if group_count > 1:
-            group_label += '-' + str(channel_type_instance+group_count-1)
+            group_label += f'-{str(channel_type_instance + group_count - 1)}'
         group = {
             'param_prefix': param_prefix,
             'channel_label': channel_label,
@@ -176,7 +164,7 @@ def get_output_groups(timer_groups, param_prefix="PWM_MAIN",
 
         if pwm_timer_param is not None:
             pwm_timer_param_cp = deepcopy(pwm_timer_param)
-            timer_param_name = param_prefix+'_TIM'+str(timer_index)
+            timer_param_name = f'{param_prefix}_TIM{str(timer_index)}'
 
             group['config_parameters'] = [
                     {
@@ -189,19 +177,19 @@ def get_output_groups(timer_groups, param_prefix="PWM_MAIN",
                 # don't show pwm limit params when dshot enabled
 
                 for standard_param in group['standard_params']:
-                    group['standard_params'][standard_param]['show_if'] = timer_param_name + '>=-1'
+                    group['standard_params'][standard_param]['show_if'] = f'{timer_param_name}>=-1'
 
                 # indicate support for changing motor spin direction
                 group['supported_actions'] = {
-                        'set_spin_direction1': {
-                            'supported_if': timer_param_name + '<-1',
-                            'actuator_types': ['motor']
-                        },
-                        'set_spin_direction2': {
-                            'supported_if': timer_param_name + '<-1',
-                            'actuator_types': ['motor']
-                        },
-                    }
+                    'set_spin_direction1': {
+                        'supported_if': f'{timer_param_name}<-1',
+                        'actuator_types': ['motor'],
+                    },
+                    'set_spin_direction2': {
+                        'supported_if': f'{timer_param_name}<-1',
+                        'actuator_types': ['motor'],
+                    },
+                }
             else:
                 # remove dshot entries if no dshot support
                 values = pwm_timer_param_cp['values']

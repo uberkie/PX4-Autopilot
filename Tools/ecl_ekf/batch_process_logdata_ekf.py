@@ -55,8 +55,11 @@ def main() -> None:
     # a corresponding .pdf file exists.'
     if not args.overwrite:
         print("skipping already analysed ulg files.")
-        ulog_files = [ulog_file for ulog_file in ulog_files if
-                      not os.path.exists('{}.pdf'.format(ulog_file))]
+        ulog_files = [
+            ulog_file
+            for ulog_file in ulog_files
+            if not os.path.exists(f'{ulog_file}.pdf')
+        ]
 
     n_files = len(ulog_files)
 
@@ -74,7 +77,7 @@ def main() -> None:
                 plot=not args.no_plots, sensor_safety_margins=not args.no_sensor_safety_margin)
 
         except Exception as e:
-            print(str(e))
+            print(e)
             print('an exception occurred, skipping file {:s}'.format(ulog_file))
             n_skipped = n_skipped + 1
 

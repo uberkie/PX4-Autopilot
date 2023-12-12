@@ -57,22 +57,26 @@ def print_config(op, config, value, new_value):
     global merge_style
 
     if merge_style:
-        if op=="-" and value=="y":
-            print("CONFIG_%s=n" % (config))
-        elif op=="-" and not new_value:
-            print("# CONFIG_%s is not set" % (config))
-        elif new_value:
-            if new_value=="n":
-                print("# CONFIG_%s is not set" % config)
-            else:
-                print("CONFIG_%s=%s" % (config, new_value))
+        if (
+            (op != "-" or value != "y")
+            and (op != "-" or new_value)
+            and new_value
+            and new_value == "n"
+            or (op != "-" or value != "y")
+            and op == "-"
+            and not new_value
+        ):
+            print(f"# CONFIG_{config} is not set")
+        elif (op != "-" or value != "y") and new_value:
+            print(f"CONFIG_{config}={new_value}")
+        elif op == "-":
+            print(f"CONFIG_{config}=n")
+    elif op=="-":
+        print(f"-{config} {value}")
+    elif op=="+":
+        print(f"+{config} {new_value}")
     else:
-        if op=="-":
-            print("-%s %s" % (config, value))
-        elif op=="+":
-            print("+%s %s" % (config, new_value))
-        else:
-            print(" %s %s -> %s" % (config, value, new_value))
+        print(f" {config} {value} -> {new_value}")
 
 def main(merge, configa_filename, configb_filename):
     global merge_style
@@ -87,11 +91,7 @@ def main(merge, configa_filename, configb_filename):
         print("I/O error[%s]: %s\n" % (e.args[0],e.args[1]))
         usage()
 
-    # print items in a but not b (accumulate, sort and print)
-    old = []
-    for config in a:
-        if config not in b:
-            old.append(config)
+    old = [config for config in a if config not in b]
     old.sort()
     for config in old:
         print_config("-", config, a[config], None)
@@ -127,7 +127,7 @@ if __name__ == '__main__':
         sys.argv.remove("-m")
 
     argc = len(sys.argv)
-    if not (argc==1 or argc == 3):
+    if argc not in {1, 3}:
         print("Error: incorrect number of arguments or unrecognized option")
         usage()
 
@@ -136,8 +136,8 @@ if __name__ == '__main__':
         build_dir=""
         if "KBUILD_OUTPUT" in os.environ:
             build_dir = os.environ["KBUILD_OUTPUT"]+"/"
-        configa_filename = build_dir + ".config.old"
-        configb_filename = build_dir + ".config"
+        configa_filename = f"{build_dir}.config.old"
+        configb_filename = f"{build_dir}.config"
     else:
         configa_filename = sys.argv[1]
         configb_filename = sys.argv[2]

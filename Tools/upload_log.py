@@ -7,6 +7,7 @@ Upload an ULog file to the logs.px4.io web server.
 """
 
 
+
 from __future__ import print_function
 
 from argparse import ArgumentParser
@@ -17,7 +18,7 @@ import sys
 try:
     import requests
 except ImportError as e:
-    print("Failed to import requests: " + str(e))
+    print(f"Failed to import requests: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user requests")
@@ -27,7 +28,7 @@ except ImportError as e:
 
 SERVER = 'https://logs.px4.io'
 #SERVER = 'http://localhost:5006' # for testing locally
-UPLOAD_URL = SERVER+'/upload'
+UPLOAD_URL = f'{SERVER}/upload'
 
 quiet = False
 
@@ -36,14 +37,12 @@ def ask_value(text, default=None):
     if quiet:
         return ""
 
-    ask_string = 'Enter ' + text
+    ask_string = f'Enter {text}'
     if default != None:
-        ask_string += ' (Press ENTER to use ' + default + ')'
+        ask_string += f' (Press ENTER to use {default})'
     ask_string += ': '
     ret = input(ask_string).strip()
-    if ret == "" and default != None:
-        return default
-    return ret
+    return default if ret == "" and default != None else ret
 
 def get_git_email():
     """ get (globally) configured git email """
@@ -83,17 +82,17 @@ def main():
 
     # arguments
     quiet = args.quiet
-    if args.description == None:
+    if args.description is None:
         description = ask_value('Log Description')
     else:
         description = args.description
 
-    if args.feedback == None:
+    if args.feedback is None:
         feedback = ask_value('Additional Feedback')
     else:
         feedback = args.feedback
 
-    if args.email == None:
+    if args.email is None:
         default_email = get_git_email()
         email = ask_value('Your e-mail', default_email)
     else:
@@ -110,17 +109,17 @@ def main():
 
     for file_name in args.FILE:
         if not quiet:
-            print('Uploading '+file_name+'...')
+            print(f'Uploading {file_name}...')
 
         with open(file_name, 'rb') as f:
             r = requests.post(UPLOAD_URL, data=payload, files={'filearg': f},
                     allow_redirects=False)
-            if r.status_code == 302: # redirect
+            if r.status_code == 302:
                 if 'Location'  in r.headers:
                     plot_url = r.headers['Location']
                     if len(plot_url) > 0 and plot_url[0] == '/':
                         plot_url = SERVER + plot_url
-                    print('URL: '+plot_url)
+                    print(f'URL: {plot_url}')
 
 
 if __name__ == '__main__':

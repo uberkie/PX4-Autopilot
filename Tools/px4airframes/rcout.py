@@ -46,13 +46,7 @@ class RCOutput():
                 if excluded:
                     continue
 
-                if post_start:
-                    # Path to post-start sript
-                    path = airframe.GetPostPath()
-                else:
-                    # Path to start script
-                    path = airframe.GetPath()
-
+                path = airframe.GetPostPath() if post_start else airframe.GetPath()
                 if not path:
                     continue
 

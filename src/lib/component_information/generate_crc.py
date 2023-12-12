@@ -16,7 +16,7 @@ def create_table():
     a = []
     for i in range(256):
         k = i
-        for j in range(8):
+        for _ in range(8):
             if k & 1:
                 k ^= 0x1db710640
             k >>= 1

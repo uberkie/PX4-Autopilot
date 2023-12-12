@@ -238,10 +238,7 @@ class MavrosTestCommon(unittest.TestCase):
 
     def set_param(self, param_id, param_value, timeout):
         """param: PX4 param string, ParamValue, timeout(int): seconds"""
-        if param_value.integer != 0:
-            value = param_value.integer
-        else:
-            value = param_value.real
+        value = param_value.integer if param_value.integer != 0 else param_value.real
         rospy.loginfo("setting PX4 parameter: {0} with value {1}".
         format(param_id, value))
         loop_freq = 1  # Hz
@@ -275,7 +272,7 @@ class MavrosTestCommon(unittest.TestCase):
         rate = rospy.Rate(loop_freq)
         simulation_ready = False
         for i in xrange(timeout * loop_freq):
-            if all(value for value in self.sub_topics_ready.values()):
+            if all(self.sub_topics_ready.values()):
                 simulation_ready = True
                 rospy.loginfo("simulation topics ready | seconds: {0} of {1}".
                               format(i / loop_freq, timeout))
@@ -390,11 +387,10 @@ class MavrosTestCommon(unittest.TestCase):
                         rospy.loginfo("waypoints successfully transferred")
                 except rospy.ServiceException as e:
                     rospy.logerr(e)
-            else:
-                if len(waypoints) == len(self.mission_wp.waypoints):
-                    rospy.loginfo("number of waypoints transferred: {0}".
-                                  format(len(waypoints)))
-                    wps_verified = True
+            elif len(waypoints) == len(self.mission_wp.waypoints):
+                rospy.loginfo("number of waypoints transferred: {0}".
+                              format(len(waypoints)))
+                wps_verified = True
 
             if wps_sent and wps_verified:
                 rospy.loginfo("send waypoints success | seconds: {0} of {1}".
@@ -444,17 +440,17 @@ class MavrosTestCommon(unittest.TestCase):
         rospy.loginfo("========================")
         rospy.loginfo("===== topic values =====")
         rospy.loginfo("========================")
-        rospy.loginfo("altitude:\n{}".format(self.altitude))
+        rospy.loginfo(f"altitude:\n{self.altitude}")
         rospy.loginfo("========================")
-        rospy.loginfo("extended_state:\n{}".format(self.extended_state))
+        rospy.loginfo(f"extended_state:\n{self.extended_state}")
         rospy.loginfo("========================")
-        rospy.loginfo("global_position:\n{}".format(self.global_position))
+        rospy.loginfo(f"global_position:\n{self.global_position}")
         rospy.loginfo("========================")
-        rospy.loginfo("home_position:\n{}".format(self.home_position))
+        rospy.loginfo(f"home_position:\n{self.home_position}")
         rospy.loginfo("========================")
-        rospy.loginfo("local_position:\n{}".format(self.local_position))
+        rospy.loginfo(f"local_position:\n{self.local_position}")
         rospy.loginfo("========================")
-        rospy.loginfo("mission_wp:\n{}".format(self.mission_wp))
+        rospy.loginfo(f"mission_wp:\n{self.mission_wp}")
         rospy.loginfo("========================")
-        rospy.loginfo("state:\n{}".format(self.state))
+        rospy.loginfo(f"state:\n{self.state}")
         rospy.loginfo("========================")

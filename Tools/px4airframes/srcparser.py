@@ -41,72 +41,70 @@ class AirframeGroup(object):
         """
         Get parameter group image base name (w/o extension)
         """
-        if (self.type == "Standard Plane"):
-            return "Plane"
-        elif (self.type == "Flying Wing"):
-            return "FlyingWing"
-        elif (self.type == "Quadrotor x"):
-            return "QuadRotorX"
-        elif (self.type == "Quadrotor +"):
-            return "QuadRotorPlus"
-        elif (self.type == "Hexarotor x"):
-            return "HexaRotorX"
-        elif (self.type == "Hexarotor +"):
-            return "HexaRotorPlus"
-        elif (self.type == "Octorotor +"):
-            return "OctoRotorPlus"
-        elif (self.type == "Octorotor x"):
-            return "OctoRotorX"
-        elif (self.type == "Octorotor Coaxial"):
-            return "OctoRotorXCoaxial"
-        elif (self.type == "Octo Coax Wide"):
-            return "OctoRotorXCoaxial"
-        elif (self.type == "Quadrotor Wide"):
-            return "QuadRotorWide"
-        elif (self.type == "Quadrotor H"):
-            return "QuadRotorH"
-        elif (self.type == "Dodecarotor cox"):
-            return "DodecaRotorXCoaxial"
-        elif (self.type == "Simulation"):
-            return "AirframeSimulation"
-        elif (self.type == "Plane A-Tail"):
-            return "PlaneATail"
-        elif (self.type == "Plane V-Tail"):
-            return "PlaneVTail"
-        elif (self.type == "VTOL Duo Tailsitter"):
-            return "VTOLDuoRotorTailSitter"
-        elif (self.type == "Standard VTOL"):
-            return "VTOLPlane"
-        elif (self.type == "VTOL Quad Tailsitter"):
-            return "VTOLQuadRotorTailSitter"
-        elif (self.type == "VTOL Tiltrotor"):
-            return "VTOLTiltRotor"
-        elif (self.type == "VTOL Octoplane"):
-            return "VTOLPlaneOcto"
-        elif (self.type == "Coaxial Helicopter"):
-            return "HelicopterCoaxial"
-        elif (self.type == "Helicopter"):
-            return "Helicopter"
-        elif (self.type == "Hexarotor Coaxial"):
-            return "Y6B"
-        elif (self.type == "Y6A"):
-            return "Y6A"
-        elif (self.type == "Tricopter Y-"):
-            return "YMinus"
-        elif (self.type == "Tricopter Y+"):
-            return "YPlus"
-        elif (self.type == "Autogyro"):
-            return "Autogyro"
-        elif (self.type == "Airship"):
+        if self.type == "Airship":
             return "Airship"
-        elif (self.type == "Rover"):
-            return "Rover"
-        elif (self.type == "Boat"):
-            return "Boat"
-        elif (self.type == "Balloon"):
+        elif self.type == "Autogyro":
+            return "Autogyro"
+        elif self.type == "Balloon":
             return "Balloon"
-        elif (self.type == "Vectored 6 DOF UUV"):
+        elif self.type == "Boat":
+            return "Boat"
+        elif self.type == "Coaxial Helicopter":
+            return "HelicopterCoaxial"
+        elif self.type == "Dodecarotor cox":
+            return "DodecaRotorXCoaxial"
+        elif self.type == "Flying Wing":
+            return "FlyingWing"
+        elif self.type == "Helicopter":
+            return "Helicopter"
+        elif self.type == "Hexarotor +":
+            return "HexaRotorPlus"
+        elif self.type == "Hexarotor Coaxial":
+            return "Y6B"
+        elif self.type == "Hexarotor x":
+            return "HexaRotorX"
+        elif self.type == "Octorotor +":
+            return "OctoRotorPlus"
+        elif self.type in ["Octorotor Coaxial", "Octo Coax Wide"]:
+            return "OctoRotorXCoaxial"
+        elif self.type == "Octorotor x":
+            return "OctoRotorX"
+        elif self.type == "Plane A-Tail":
+            return "PlaneATail"
+        elif self.type == "Plane V-Tail":
+            return "PlaneVTail"
+        elif self.type == "Quadrotor +":
+            return "QuadRotorPlus"
+        elif self.type == "Quadrotor H":
+            return "QuadRotorH"
+        elif self.type == "Quadrotor Wide":
+            return "QuadRotorWide"
+        elif self.type == "Quadrotor x":
+            return "QuadRotorX"
+        elif self.type == "Rover":
+            return "Rover"
+        elif self.type == "Simulation":
+            return "AirframeSimulation"
+        elif self.type == "Standard Plane":
+            return "Plane"
+        elif self.type == "Standard VTOL":
+            return "VTOLPlane"
+        elif self.type == "Tricopter Y+":
+            return "YPlus"
+        elif self.type == "Tricopter Y-":
+            return "YMinus"
+        elif self.type == "VTOL Duo Tailsitter":
+            return "VTOLDuoRotorTailSitter"
+        elif self.type == "VTOL Octoplane":
+            return "VTOLPlaneOcto"
+        elif self.type == "VTOL Quad Tailsitter":
+            return "VTOLQuadRotorTailSitter"
+        elif self.type == "VTOL Tiltrotor":
+            return "VTOLTiltRotor"
+        elif self.type == "Vectored 6 DOF UUV":
             return "Vectored6DofUUV"
+        elif self.type == "Y6A":
+            return "Y6A"
         return "AirframeUnknown"
 
     def GetAirframes(self):
@@ -218,18 +216,14 @@ class Airframe(object):
         """
         keys = self.fields.keys()
         keys = sorted(keys)
-        keys = sorted(keys, key=lambda x: self.priority.get(x, 0), reverse=True)
-        return keys
+        return sorted(keys, key=lambda x: self.priority.get(x, 0), reverse=True)
 
     def GetFieldValue(self, code):
         """
         Return value of the given field code or None if not found.
         """
         fv =  self.fields.get(code)
-        if not fv:
-                # required because python 3 sorted does not accept None
-                return ""
-        return self.fields.get(code)
+        return "" if not fv else self.fields.get(code)
 
     def GetOutputCodes(self):
         """
@@ -237,18 +231,14 @@ class Airframe(object):
         """
         keys = self.outputs.keys()
         keys = sorted(keys)
-        keys = sorted(keys, key=lambda x: self.priority.get(x, 0), reverse=True)
-        return keys
+        return sorted(keys, key=lambda x: self.priority.get(x, 0), reverse=True)
 
     def GetOutputValue(self, code):
         """
         Return value of the given output code or None if not found.
         """
         fv =  self.outputs.get(code)
-        if not fv:
-                # required because python 3 sorted does not accept None
-                return ""
-        return self.outputs.get(code)
+        return "" if not fv else self.outputs.get(code)
 
     def GetArchCodes(self):
         """
@@ -256,18 +246,14 @@ class Airframe(object):
         """
         keys = self.archs.keys()
         keys = sorted(keys)
-        keys = sorted(keys, key=lambda x: self.priority.get(x, 0), reverse=True)
-        return keys
+        return sorted(keys, key=lambda x: self.priority.get(x, 0), reverse=True)
 
     def GetArchValue(self, code):
         """
         Return value of the given arch code or None if not found.
         """
         fv =  self.archs.get(code)
-        if not fv:
-                # required because python 3 sorted does not accept None
-                return ""
-        return self.archs.get(code)
+        return "" if not fv else self.archs.get(code)
 
 class SourceParser(object):
     """
@@ -332,54 +318,49 @@ class SourceParser(object):
                 short_desc = None
                 long_desc = None
             if state is not None and state != "comment-processed":
-                m = self.re_comment_end.search(line)
-                if m:
+                if m := self.re_comment_end.search(line):
                     line = m.group(1)
                     last_comment_line = True
                 else:
                     last_comment_line = False
-                m = self.re_comment_content.match(line)
-                if m:
+                if m := self.re_comment_content.match(line):
                     comment_content = m.group(1)
                     if comment_content == "":
                         # When short comment ends with empty comment line,
                         # start waiting for the next part - long comment.
                         if state == "wait-short-end":
                             state = "wait-long"
-                    else:
-                        m = self.re_comment_tag.match(comment_content)
-                        if m:
-                            tag, desc = m.group(1, 2)
-                            if (tag == "output"):
-                                key, text = desc.split(' ', 1)
-                                outputs[key] = text
-                            elif (tag == "board"):
-                                key, text = desc.split(' ', 1)
-                                archs[key] = text
-                            else:
-                                tags[tag] = desc
-                            current_tag = tag
-                            state = "wait-tag-end"
-                        elif state == "wait-short":
-                            # Store first line of the short description
-                            short_desc = comment_content
-                            state = "wait-short-end"
-                        elif state == "wait-short-end":
-                            # Append comment line to the short description
-                            short_desc += "\n" + comment_content
-                        elif state == "wait-long":
-                            # Store first line of the long description
-                            long_desc = comment_content
-                            state = "wait-long-end"
-                        elif state == "wait-long-end":
-                            # Append comment line to the long description
-                            long_desc += "\n" + comment_content
-                        elif state == "wait-tag-end":
-                            # Append comment line to the tag text
-                            tags[current_tag] += "\n" + comment_content
+                    elif m := self.re_comment_tag.match(comment_content):
+                        tag, desc = m.group(1, 2)
+                        if (tag == "output"):
+                            key, text = desc.split(' ', 1)
+                            outputs[key] = text
+                        elif (tag == "board"):
+                            key, text = desc.split(' ', 1)
+                            archs[key] = text
                         else:
-                            raise AssertionError(
-                                    "Invalid parser state: %s" % state)
+                            tags[tag] = desc
+                        current_tag = tag
+                        state = "wait-tag-end"
+                    elif state == "wait-short":
+                        # Store first line of the short description
+                        short_desc = comment_content
+                        state = "wait-short-end"
+                    elif state == "wait-short-end":
+                        # Append comment line to the short description
+                        short_desc += "\n" + comment_content
+                    elif state == "wait-long":
+                        # Store first line of the long description
+                        long_desc = comment_content
+                        state = "wait-long-end"
+                    elif state == "wait-long-end":
+                        # Append comment line to the long description
+                        long_desc += "\n" + comment_content
+                    elif state == "wait-tag-end":
+                        # Append comment line to the tag text
+                        tags[current_tag] += "\n" + comment_content
+                    else:
+                        raise AssertionError(f"Invalid parser state: {state}")
                 elif not last_comment_line:
                     # Invalid comment line (inside comment, but not starting with
                     # "*" or "*/". Reset parsed content.
@@ -397,6 +378,8 @@ class SourceParser(object):
 
         # Done with file, store
         for tag in tags:
+            if tag == "desc":
+                continue
             if tag == "maintainer":
                 maintainer = tags[tag]
             elif tag == "type":
@@ -405,37 +388,30 @@ class SourceParser(object):
                 airframe_class = tags[tag]
             elif tag == "name":
                 airframe_name = tags[tag]
-            elif tag == "desc":
-                # General documentation - not a parameter to be saved.
-                pass
             elif tag not in self.valid_tags:
                 sys.stderr.write("Aborting due to invalid documentation tag: '%s'\n" % tag)
                 return False
 
         # Sanity check
-        if airframe_type == None:
+        if airframe_type is None:
             sys.stderr.write("Aborting due to missing @type tag in file: '%s'\n" % path)
             return False
 
-        if airframe_class == None:
+        if airframe_class is None:
             sys.stderr.write("Aborting due to missing @class tag in file: '%s'\n" % path)
             return False
 
-        if airframe_name == None:
+        if airframe_name is None:
             sys.stderr.write("Aborting due to missing @name tag in file: '%s'\n" % path)
             return False
 
         # Check if a .post script exists
-        if os.path.isfile(path + '.post'):
-            post_path = path + '.post'
-        else:
-            post_path = None
-
+        post_path = f'{path}.post' if os.path.isfile(f'{path}.post') else None
         # We already know this is an airframe config, so add it
         airframe = Airframe(path, post_path, airframe_name, airframe_type, airframe_class, airframe_id, maintainer)
 
         # Done with file, store
-        for tag in tags:
+        for tag, value in tags.items():
             if tag == "maintainer":
                 maintainer = tags[tag]
             if tag == "type":
@@ -445,15 +421,15 @@ class SourceParser(object):
             if tag == "name":
                 airframe_name = tags[tag]
             else:
-                airframe.SetField(tag, tags[tag])
+                airframe.SetField(tag, value)
 
         # Store outputs
-        for output in outputs:
-            airframe.SetOutput(output, outputs[output])
+        for output, value_ in outputs.items():
+            airframe.SetOutput(output, value_)
 
         # Store outputs
-        for arch in archs:
-            airframe.SetArch(arch, archs[arch])
+        for arch, value__ in archs.items():
+            airframe.SetArch(arch, value__)
 
         # Store the parameter
 
@@ -483,7 +459,7 @@ class SourceParser(object):
                 name  = param.GetName()
                 board = param.GetFieldValue("board")
                 # Check for duplicates
-                name_plus_board = name + "+" + board
+                name_plus_board = f"{name}+{board}"
                 for seenParamName in seenParamNames:
                     if seenParamName == name_plus_board:
                         sys.stderr.write("Duplicate parameter definition: {0}\n".format(name_plus_board))
@@ -513,6 +489,6 @@ class SourceParser(object):
                 duplicate_test.add(group.GetType() )
         for group in groups:
             if group.GetType() in duplicate_set:
-                group.name=group.GetType()+' (%s)' % group.GetClass()
+                group.name = f'{group.GetType()} ({group.GetClass()})'
 
         return groups

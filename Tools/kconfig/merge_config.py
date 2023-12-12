@@ -102,26 +102,21 @@ def main(kconfig_file, config1, config2):
     print(kconf.load_config(config1, replace=False))
     print(kconf.load_config(config2, replace=False))
 
-    # Modification for PX4 unset all symbols (INT,HEX etc) from 2nd config
+    with open(config2, 'r') as f:
+        unset_match = re.compile('# CONFIG_([^ ]+) is not set', re.ASCII).match
 
-    f = open(config2, 'r')
+        for line in f:
+            match = unset_match(line)
+            #pprint.pprint(line)
+            if match is not None:
+                sym_name = match.group(1)
+                kconf.syms[sym_name].unset_value()
 
-    unset_match = re.compile(r"# {}([^ ]+) is not set".format("CONFIG_"), re.ASCII).match
-
-    for line in f:
-        match = unset_match(line)
-        #pprint.pprint(line)
-        if match is not None:
-            sym_name = match.group(1)
-            kconf.syms[sym_name].unset_value()
-
-            if kconf.syms[sym_name].type is BOOL:
-                for default, cond in kconf.syms[sym_name].orig_defaults:
-                    if(cond.str_value == 'y'):
-                        # Default is y, our diff is unset thus we've set it to no
-                        kconf.syms[sym_name].set_value(0)
-
-    f.close()
+                if kconf.syms[sym_name].type is BOOL:
+                    for default, cond in kconf.syms[sym_name].orig_defaults:
+                        if(cond.str_value == 'y'):
+                            # Default is y, our diff is unset thus we've set it to no
+                            kconf.syms[sym_name].set_value(0)
 
     # Print warnings for symbols whose actual value doesn't match the assigned
     # value
@@ -136,10 +131,10 @@ def main(kconfig_file, config1, config2):
                 user_value = sym.user_value
 
             if user_value != sym.str_value:
-                print("warning: {} was assigned the value '{}' but got the "
-                    "value '{}' -- check dependencies".format(
-                        sym.name_and_loc, user_value, sym.str_value),
-                    file=sys.stderr)
+                print(
+                    f"warning: {sym.name_and_loc} was assigned the value '{user_value}' but got the value '{sym.str_value}' -- check dependencies",
+                    file=sys.stderr,
+                )
 
     return kconf
 

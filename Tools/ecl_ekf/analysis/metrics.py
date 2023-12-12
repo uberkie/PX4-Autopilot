@@ -63,7 +63,7 @@ def calculate_sensor_metrics(
         # only run sensor checks, if they apply.
         if result_id in sensor_checks:
 
-            if result_id == 'mag' or result_id == 'hgt':
+            if result_id in ['mag', 'hgt']:
                 in_air_detector = in_air_no_ground_effects
             else:
                 in_air_detector = in_air

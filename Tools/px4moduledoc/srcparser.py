@@ -40,12 +40,12 @@ class ModuleDocumentation(object):
         self._paring_implicit_options = False
 
         for func_name, args in function_calls:
-            attribute_name = '_handle_'+func_name.lower()
+            attribute_name = f'_handle_{func_name.lower()}'
             try:
                 f = getattr(self, attribute_name)
                 f(args)
             except AttributeError:
-                raise Exception('unhandled function: PRINT_MODULE_'+func_name)
+                raise Exception(f'unhandled function: PRINT_MODULE_{func_name}')
 
         self._usage_string = self._wrap_long_lines(self._usage_string, 17)
 
@@ -183,10 +183,9 @@ class ModuleDocumentation(object):
                 self._usage_string += "                 values: %s, default: %s\n" %(values, default_val)
             else:
                 self._usage_string += "                 values: %s\n" % values
-        else:
-            if self._is_string(args[1]):
-                default_val = self._get_string(args[1])
-                self._usage_string += "                 default: %s\n" % default_val
+        elif self._is_string(args[1]):
+            default_val = self._get_string(args[1])
+            self._usage_string += "                 default: %s\n" % default_val
 
     def _handle_usage_param_comment(self, args):
         assert(len(args) == 1) # comment
@@ -237,11 +236,13 @@ class ModuleDocumentation(object):
         wrap long lines in a string
         :param indentation_spaces: number of added spaces on continued lines
         """
-        ret = ''
-        for s in string.splitlines():
-            ret += textwrap.fill(s, self.max_line_length,
-                    subsequent_indent=' '*indentation_spaces)+'\n'
-        return ret
+        return ''.join(
+            textwrap.fill(
+                s, self.max_line_length, subsequent_indent=' ' * indentation_spaces
+            )
+            + '\n'
+            for s in string.splitlines()
+        )
 
     def name(self):
         return self._name
@@ -324,9 +325,8 @@ class SourceParser(object):
         # replace preprocessor defines defined in file directly
         contents = self._define_replacer(contents)
 
-        extracted_function_calls = [] # list of tuples: (FUNC_NAME, list(ARGS))
-
         start_index = 0
+        extracted_function_calls = []
         while start_index < len(contents):
             # skip whitespace
             while start_index < len(contents) and contents[start_index] in [ ' ', '\t']:
@@ -341,8 +341,7 @@ class SourceParser(object):
                 start_index = end_index + 1
                 continue
 
-            m = self.re_doc_definition.match(contents, start_index, end_index)
-            if m:
+            if m := self.re_doc_definition.match(contents, start_index, end_index):
                 func_name = m.group(1)
                 end_index_match = m.span()[1]
                 next_start_index, arguments = self._parse_arguments(contents, end_index_match)
@@ -357,18 +356,23 @@ class SourceParser(object):
             start_index = end_index + 1
 
 
-        if len(extracted_function_calls) > 0:
+        if extracted_function_calls:
             # add the module to the dict
             module_doc = ModuleDocumentation(extracted_function_calls, scope)
 
             if module_doc.name() == '':
-                raise  Exception('PRINT_MODULE_USAGE_NAME not given for ' + scope)
-            if not module_doc.category() in ModuleDocumentation.valid_categories:
-                raise  Exception('Invalid/unknown category ' +
-                        module_doc.category() + ' for ' + scope)
-            if not module_doc.subcategory() in ModuleDocumentation.valid_subcategories:
-                raise  Exception('Invalid/unknown subcategory ' +
-                        module_doc.subcategory() + ' for ' + scope)
+                raise Exception(f'PRINT_MODULE_USAGE_NAME not given for {scope}')
+            if module_doc.category() not in ModuleDocumentation.valid_categories:
+                raise Exception(
+                    f'Invalid/unknown category {module_doc.category()} for {scope}'
+                )
+            if (
+                module_doc.subcategory()
+                not in ModuleDocumentation.valid_subcategories
+            ):
+                raise Exception(
+                    f'Invalid/unknown subcategory {module_doc.subcategory()} for {scope}'
+                )
 
             self._do_consistency_check(contents, scope, module_doc)
 
@@ -381,10 +385,8 @@ class SourceParser(object):
             Source: https://stackoverflow.com/a/241506 """
         def replacer(match):
             s = match.group(0)
-            if s.startswith('/'):
-                return " " # note: a space and not an empty string
-            else:
-                return s
+            return " " if s.startswith('/') else s
+
         return re.sub(self._comment_remove_pattern, replacer, text)
 
     def _define_replacer(self, text):
@@ -428,9 +430,9 @@ class SourceParser(object):
                             failed = True
 
                 if failed:
-                    print(("Warning: documentation inconsistency in %s:" % scope))
-                    print((" Documented options       : %s" % sorted_module_options))
-                    print((" Options found in getopt(): %s" % sorted_getopt_args))
+                    print(f"Warning: documentation inconsistency in {scope}:")
+                    print(f" Documented options       : {sorted_module_options}")
+                    print(f" Options found in getopt(): {sorted_getopt_args}")
                     self._consistency_checks_failure = True
 
 
@@ -438,11 +440,11 @@ class SourceParser(object):
         # this will also find the value arguments, so append them too to the
         # module doc strings
         commands = re.findall(r"\bstrcmp\b.*argv\[.*\"(.+)\"", contents) + \
-                   re.findall(r"\bstrcmp\b.*\"(.+)\".*argv\[", contents) + \
-                   re.findall(r"\bstrcmp\b.*\bverb\b.*\"(.+)\"", contents)
+                       re.findall(r"\bstrcmp\b.*\"(.+)\".*argv\[", contents) + \
+                       re.findall(r"\bstrcmp\b.*\bverb\b.*\"(.+)\"", contents)
 
         doc_commands = module_doc.all_commands() + \
-                [x for value in module_doc.all_values() for x in value.split('|')]
+                    [x for value in module_doc.all_values() for x in value.split('|')]
 
         for command in commands:
             if len(command) == 2 and command[0] == '-':
@@ -451,25 +453,23 @@ class SourceParser(object):
             if command in ['start', 'stop', 'status']:
                 continue # handled in the base class
 
-            if not command in doc_commands:
-                print(("Warning: undocumented command '%s' in %s" %(command, scope)))
+            if command not in doc_commands:
+                print(f"Warning: undocumented command '{command}' in {scope}")
                 self._consistency_checks_failure = True
 
         # limit the maximum line length in the module doc string
         max_line_length = 120
         module_doc = module_doc.documentation()
         verbatim_mode = False
-        line_nr = 0
         for line in module_doc.split('\n'):
-            line_nr += 1
             if line.strip().startswith('```'):
                 # ignore preformatted blocks
                 verbatim_mode = not verbatim_mode
             elif not verbatim_mode:
-                if not 'www.' in line and not 'http' in line:
+                if 'www.' not in line and 'http' not in line:
                     if len(line) > max_line_length:
                         print(('Line too long (%i > %i) in %s:' % (len(line), max_line_length, scope)))
-                        print((' '+line))
+                        print(f' {line}')
                         self._consistency_checks_failure = True
 
 
@@ -518,14 +518,16 @@ class SourceParser(object):
                 next_position = contents.find('*/', next_position) + 2
             else:
                 if current_string != '':
-                    args.append('"'+current_string+'"')
+                    args.append(f'"{current_string}"')
                     current_string = ''
 
                 if contents.startswith('R\"', next_position): # C++11 raw string literal
                     bracket = contents.find('(', next_position)
                     identifier = contents[next_position+2:bracket]
-                    raw_string_end = contents.find(')'+identifier+'"', next_position)
-                    args.append('"'+contents[next_position+3+len(identifier):raw_string_end]+'"')
+                    raw_string_end = contents.find(f'){identifier}"', next_position)
+                    args.append(
+                        f'"{contents[next_position + 3 + len(identifier):raw_string_end]}"'
+                    )
                     next_position = raw_string_end+len(identifier)+2
                 elif contents[next_position] == ')':
                     break # finished
@@ -537,12 +539,12 @@ class SourceParser(object):
                     # keyword (true, nullptr, ...), number or char (or variable).
                     # valid separators are: \n, ,, ), //, /*
                     next_arg_pos = contents.find(',', next_position)
-                    m = re.search(r"\n|,|\)|//|/\*", contents[next_position:])
-                    if m:
-                        next_arg_pos = m.start() + next_position
-                        args.append(contents[next_position:next_arg_pos].strip())
-                    else:
+                    if not (
+                        m := re.search(r"\n|,|\)|//|/\*", contents[next_position:])
+                    ):
                         raise Exception('parser error')
+                    next_arg_pos = m.start() + next_position
+                    args.append(contents[next_position:next_arg_pos].strip())
                     next_position = next_arg_pos
         #print(args)
 
@@ -573,8 +575,7 @@ class SourceParser(object):
                 groups[module.category()] = {subcategory: [module]}
 
         # sort by module name
-        for category in groups:
-            group = groups[category]
+        for group in groups.values():
             for subcategory in group:
                 group[subcategory] = sorted(group[subcategory], key=lambda x: x.name())
         return groups

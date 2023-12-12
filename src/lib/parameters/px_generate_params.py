@@ -2,6 +2,7 @@
 """
 Param source code generation script.
 """
+
 from __future__ import print_function
 import xml.etree.ElementTree as ET
 import argparse
@@ -10,7 +11,7 @@ import sys
 try:
     from jinja2 import Environment, FileSystemLoader
 except ImportError as e:
-    print("Failed to import jinja2: " + str(e))
+    print(f"Failed to import jinja2: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user jinja2")
@@ -34,9 +35,7 @@ def generate(xml_file, dest='.'):
     params = []
     for group in root:
         if group.tag == "group" and "no_code_generation" not in group.attrib:
-            for param in group:
-                params.append(param)
-
+            params.extend(iter(group))
     params = sorted(params, key=lambda name: name.attrib["name"])
 
     script_path = os.path.dirname(os.path.realpath(__file__))

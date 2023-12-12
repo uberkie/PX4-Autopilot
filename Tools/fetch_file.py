@@ -52,7 +52,7 @@ def _wait_for_string(ser, s, timeout):
     t0 = time.time()
     buf = []
     res = []
-    while (True):
+    while True:
         c = ser.read()
         buf.append(c)
         if len(buf) > len(s):
@@ -60,7 +60,7 @@ def _wait_for_string(ser, s, timeout):
         if "".join(buf) == s:
             break
         if timeout > 0.0 and time.time() - t0 > timeout:
-            raise Exception("Timeout while waiting for: " + s)
+            raise Exception(f"Timeout while waiting for: {s}")
     return "".join(res)
 
 def _exec_cmd(ser, cmd, timeout):
@@ -70,20 +70,20 @@ def _exec_cmd(ser, cmd, timeout):
     return _wait_for_string(ser, "nsh> \x1b[K", timeout)
 
 def _ls_dir_raw(ser, dir, timeout):
-    return _exec_cmd(ser, "ls -l " + dir, timeout)
+    return _exec_cmd(ser, f"ls -l {dir}", timeout)
 
 def _ls_dir(ser, dir, timeout):
     res = []
     for line in _ls_dir_raw(ser, dir, timeout).splitlines():
-        if line == dir + ":":
+        if line == f"{dir}:":
             continue
         if line.startswith("nsh: ls: no such directory:"):
-            raise Exception("No such file: " + dir)
+            raise Exception(f"No such file: {dir}")
         res.append((line[20:], int(line[11:19].strip()), line[1] == "d"))
     return res
 
 def _get_file(ser, fn, fn_out, force, timeout):
-    print("Get %s:" % fn, end=' ')
+    print(f"Get {fn}:", end=' ')
     if not force:
         # Check if file already exists with the same size
         try:
@@ -94,16 +94,16 @@ def _get_file(ser, fn, fn_out, force, timeout):
             print("already fetched, skip")
             return
 
-    cmd = "dumpfile " + fn
+    cmd = f"dumpfile {fn}"
     ser.write(cmd + "\n")
     ser.flush()
     _wait_for_string(ser, cmd + "\r\n", timeout)
     res = _wait_for_string(ser, "\n", timeout)
-    if res.startswith("OK"):
+    if not res.startswith("OK"):
+        raise Exception("Error reading file")
         # Got correct responce, open temp file
-        fn_out_part = fn_out + ".part"
-        fout = open(fn_out_part, "wb")
-
+    fn_out_part = f"{fn_out}.part"
+    with open(fn_out_part, "wb") as fout:
         size = int(res.split()[1])
         sys.stdout.write(" [%i bytes] " % size)
         n = 0
@@ -114,10 +114,7 @@ def _get_file(ser, fn, fn_out, force, timeout):
             sys.stdout.flush()
             fout.write(buf)
         print(" done")
-        fout.close()
-        os.rename(fn_out_part, fn_out)
-    else:
-        raise Exception("Error reading file")
+    os.rename(fn_out_part, fn_out)
     _wait_for_string(ser, "nsh> \x1b[K", timeout)
 
 def _get_files_in_dir(ser, path, path_out, force, timeout):
@@ -149,7 +146,7 @@ def _main():
     path = None
     path_out = None
     force = False
-    
+
     opt = None
     for arg in sys.argv[1:]:
         if opt != None:
@@ -171,10 +168,10 @@ def _main():
                 opt = "s"
             elif arg == "-o":
                 opt = "o"
-            elif path == None:
+            elif path is None:
                 path = arg
 
-    if path == None:
+    if path is None:
         _usage()
         exit(0)
 
@@ -201,7 +198,7 @@ def _main():
                 _get_file(ser, path, os.path.split(path)[1], force, timeout)
     except Exception as e:
         print(e)
-    
+
     ser.close()
 
 if __name__ == "__main__":

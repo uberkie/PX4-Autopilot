@@ -46,10 +46,7 @@ if(len(sys.argv)) < 3:
 
 logfile = sys.argv[1]
 imageDir = sys.argv[2]
-triggerOffset = 0
-
-if(len(sys.argv) > 3):
-    triggerOffset = int(sys.argv[3])
+triggerOffset = int(sys.argv[3]) if (len(sys.argv) > 3) else 0
 
 def to_deg(value, loc):
     """convert decimal coordinates into degrees, munutes and seconds tuple
@@ -100,10 +97,9 @@ def load_ulog_file(file_name):
     try:
         ulog = ULog(file_name, msg_filter)
     except FileNotFoundError:
-        print("Error: file %s not found" % file_name)
+        print(f"Error: file {file_name} not found")
         raise
 
-    # catch all other exceptions and turn them into an ULogException
     except Exception as error:
         traceback.print_exception(*sys.exc_info())
         raise ULogException()
@@ -136,16 +132,15 @@ def load_ulog_file(file_name):
     # (re)loaded on each page request. Thus the caching would not work there.
 
     # load only the messages we really need
-    
+
 
     msg_filter = ['camera_capture']
     try:
         ulog = ULog(file_name)
     except FileNotFoundError:
-        print("Error: file %s not found" % file_name)
+        print(f"Error: file {file_name} not found")
         raise
 
-    # catch all other exceptions and turn them into an ULogException
     except Exception as error:
         traceback.print_exception(*sys.exc_info())
         raise ULogException()
@@ -184,56 +179,56 @@ files.sort()
 first = 0
 
 for f in reversed(files):
-  img = Image.open(f)
-  exif_dict = piexif.load(img.info['exif'])
-  timestring = exif_dict['Exif'][piexif.ExifIFD.DateTimeOriginal]
-  timestamp = time.mktime(datetime.datetime.strptime(timestring, "%Y:%m:%d %H:%M:%S").timetuple())
-  if first == 0:
-    first = timestamp
-    print("Calibrating on",f,"as last image on",timestring)
-    print("")
-    print("[filename] [offset] [trigger seq] [lat] [lng] [alt]")
+    img = Image.open(f)
+    exif_dict = piexif.load(img.info['exif'])
+    timestring = exif_dict['Exif'][piexif.ExifIFD.DateTimeOriginal]
+    timestamp = time.mktime(datetime.datetime.strptime(timestring, "%Y:%m:%d %H:%M:%S").timetuple())
+    if first == 0:
+      first = timestamp
+      print("Calibrating on",f,"as last image on",timestring)
+      print("")
+      print("[filename] [offset] [trigger seq] [lat] [lng] [alt]")
 
-  offset = first - timestamp
-  print((f), end=' ')
-  print((offset), end=' ')
-  if not offset in offsets:
-    offset += 1
+    offset = first - timestamp
+    print((f), end=' ')
+    print((offset), end=' ')
+    if offset not in offsets:
+        offset += 1
 
-  if not offset in offsets:
-    offset += 1
+    if offset not in offsets:
+        offset += 1
 
-  if offset in offsets:
-    print((offsets[offset]), end=' ')
-    print((camera_capture.data['lat'][offsets[offset]]), end=' ')
-    print((camera_capture.data['lon'][offsets[offset]]), end=' ')
-    print(camera_capture.data['alt'][offsets[offset]])
+    if offset in offsets:
+      print((offsets[offset]), end=' ')
+      print((camera_capture.data['lat'][offsets[offset]]), end=' ')
+      print((camera_capture.data['lon'][offsets[offset]]), end=' ')
+      print(camera_capture.data['alt'][offsets[offset]])
 
-    lat = camera_capture.data['lat'][offsets[offset]]
-    lng = camera_capture.data['lon'][offsets[offset]]
-    altitude = camera_capture.data['alt'][offsets[offset]]
+      lat = camera_capture.data['lat'][offsets[offset]]
+      lng = camera_capture.data['lon'][offsets[offset]]
+      altitude = camera_capture.data['alt'][offsets[offset]]
 
-    lat_deg = to_deg(lat, ["S", "N"])
-    lng_deg = to_deg(lng, ["W", "E"])
+      lat_deg = to_deg(lat, ["S", "N"])
+      lng_deg = to_deg(lng, ["W", "E"])
 
-    exiv_lat = (change_to_rational(lat_deg[0]), change_to_rational(lat_deg[1]), change_to_rational(lat_deg[2]))
-    exiv_lng = (change_to_rational(lng_deg[0]), change_to_rational(lng_deg[1]), change_to_rational(lng_deg[2]))
+      exiv_lat = (change_to_rational(lat_deg[0]), change_to_rational(lat_deg[1]), change_to_rational(lat_deg[2]))
+      exiv_lng = (change_to_rational(lng_deg[0]), change_to_rational(lng_deg[1]), change_to_rational(lng_deg[2]))
 
-    gps_ifd = {
-        piexif.GPSIFD.GPSVersionID: (2, 0, 0, 0),
-        piexif.GPSIFD.GPSAltitudeRef: 0,
-        piexif.GPSIFD.GPSAltitude: change_to_rational(round(altitude)),
-        piexif.GPSIFD.GPSLatitudeRef: lat_deg[3],
-        piexif.GPSIFD.GPSLatitude: exiv_lat,
-        piexif.GPSIFD.GPSLongitudeRef: lng_deg[3],
-        piexif.GPSIFD.GPSLongitude: exiv_lng,
-    }
+      gps_ifd = {
+          piexif.GPSIFD.GPSVersionID: (2, 0, 0, 0),
+          piexif.GPSIFD.GPSAltitudeRef: 0,
+          piexif.GPSIFD.GPSAltitude: change_to_rational(round(altitude)),
+          piexif.GPSIFD.GPSLatitudeRef: lat_deg[3],
+          piexif.GPSIFD.GPSLatitude: exiv_lat,
+          piexif.GPSIFD.GPSLongitudeRef: lng_deg[3],
+          piexif.GPSIFD.GPSLongitude: exiv_lng,
+      }
 
-    exif_dict["GPS"] = gps_ifd
-    exif_bytes = piexif.dump(exif_dict)
-    piexif.insert(exif_bytes, f)
-  else:
-    print("Could not georeference")
+      exif_dict["GPS"] = gps_ifd
+      exif_bytes = piexif.dump(exif_dict)
+      piexif.insert(exif_bytes, f)
+    else:
+      print("Could not georeference")
 
 
 print("Done")

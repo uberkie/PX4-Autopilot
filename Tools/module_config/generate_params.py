@@ -3,6 +3,7 @@
     Note: serial params are handled in Tools/serial/generate_config.py
 """
 
+
 import argparse
 import os
 import sys
@@ -13,7 +14,7 @@ from output_groups_from_timer_config import get_timer_groups, get_output_groups
 try:
     import yaml
 except ImportError as e:
-    print("Failed to import yaml: " + str(e))
+    print(f"Failed to import yaml: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user pyyaml")
@@ -52,16 +53,14 @@ output_functions_file = os.path.join(root_dir,"src/lib/mixer_module/output_funct
 
 def process_module_name(module_name):
     if module_name == '${PWM_MAIN_OR_AUX}':
-        if board_with_io: return 'PWM AUX'
-        return 'PWM MAIN'
+        return 'PWM AUX' if board_with_io else 'PWM MAIN'
     if '${' in module_name:
         raise Exception('unhandled variable in {:}'.format(module_name))
     return module_name
 
 def process_param_prefix(param_prefix):
     if param_prefix == '${PWM_MAIN_OR_AUX}':
-        if board_with_io: return 'PWM_AUX'
-        return 'PWM_MAIN'
+        return 'PWM_AUX' if board_with_io else 'PWM_MAIN'
     if '${' in param_prefix:
         raise Exception('unhandled variable in {:}'.format(param_prefix))
     return param_prefix
@@ -70,12 +69,10 @@ def process_channel_label(module_name, channel_label, no_prefix):
     if channel_label == '${PWM_MAIN_OR_AUX_CAP}':
         return 'PWM Capture'
     if channel_label == '${PWM_MAIN_OR_AUX}':
-        if board_with_io: return 'PWM Aux'
-        return 'PWM Main'
+        return 'PWM Aux' if board_with_io else 'PWM Main'
     if '${' in channel_label:
         raise Exception('unhandled variable in {:}'.format(channel_label))
-    if no_prefix: return channel_label
-    return module_name + ' ' + channel_label
+    return channel_label if no_prefix else f'{module_name} {channel_label}'
 
 
 def parse_yaml_parameters_config(yaml_config, ethernet_supported):
@@ -378,7 +375,7 @@ for yaml_file in args.config_files:
         print('Exception while parsing {:}:'.format(yaml_file))
         raise e
     # now add them to the yaml config
-    if not 'parameters' in yaml_config:
+    if 'parameters' not in yaml_config:
         yaml_config['parameters'] = []
     group_name = 'Actuator Outputs'
     yaml_config['parameters'].append({'group': group_name, 'definitions': actuator_output_params})

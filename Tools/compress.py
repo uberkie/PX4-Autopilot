@@ -11,7 +11,7 @@ filename = args.filename
 
 def save_compressed(filename):
     #create xz compressed version
-    xz_filename=filename+'.xz'
+    xz_filename = f'{filename}.xz'
     with lzma.open(xz_filename, 'wt', preset=9) as f:
         with open(filename, 'r') as content_file:
             f.write(content_file.read())

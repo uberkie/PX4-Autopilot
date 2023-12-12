@@ -61,7 +61,7 @@ class PX4TestHelper(object):
         self.closed = False
 
         rospy.init_node('test_node', anonymous=True)
-        self.bag = rosbag.Bag(self.test_name + '.bag', 'w', compression="lz4")
+        self.bag = rosbag.Bag(f'{self.test_name}.bag', 'w', compression="lz4")
 
         self.sub_vlp = rospy.Subscriber("iris/vehicle_local_position",
                 vehicle_local_position, self.vehicle_position_callback)

@@ -19,7 +19,7 @@ def is_valid_directory(parser, arg):
         # Directory exists so return the directory
         return arg
     else:
-        parser.error('The directory {} does not exist'.format(arg))
+        parser.error(f'The directory {arg} does not exist')
 
 args = parser.parse_args()
 metadata_directory = args.directory_path

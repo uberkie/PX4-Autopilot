@@ -55,11 +55,8 @@ def monitor_firmware_upload(port_url, baudrate):
 
             print_line(serial_line)
 
-            if "NuttShell (NSH)" in serial_line:
+            if "NuttShell (NSH)" in serial_line or "nsh>" in serial_line:
                 sys.exit(return_code)
-            elif "nsh>" in serial_line:
-                sys.exit(return_code)
-
         else:
             if time.monotonic() > timeout_start + timeout:
                 print("Error, timeout")

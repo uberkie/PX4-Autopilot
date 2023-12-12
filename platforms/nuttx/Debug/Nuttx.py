@@ -91,7 +91,7 @@ class NX_register_set(object):
 		register is the register as a string e.g. 'pc'
 		return integer containing the value of the register
 		"""
-		str_to_eval = "info registers "+register
+		str_to_eval = f"info registers {register}"
 		resp = gdb.execute(str_to_eval,to_string = True)
 		content = resp.split()[-1]
 		try:
@@ -166,17 +166,12 @@ class NX_task(object):
 	@staticmethod
 	def tasks():
 		"""return a list of all tasks"""
-		tasks = []
-		for pid in NX_task.pids():
-			tasks.append(NX_task.for_pid(pid))
-		return tasks
+		return [NX_task.for_pid(pid) for pid in NX_task.pids()]
 
 	def _state_is(self, state):
 		"""tests the current state of the task against the passed-in state name"""
 		statenames = gdb.types.make_enum_dict(gdb.lookup_type('enum tstate_e'))
-		if self._tcb['task_state'] == statenames[state]:
-			return True
-		return False
+		return self._tcb['task_state'] == statenames[state]
 
 	@property
 	def stack_used(self):
@@ -202,10 +197,14 @@ class NX_task(object):
 	def state(self):
 		"""return the name of the task's current state"""
 		statenames = gdb.types.make_enum_dict(gdb.lookup_type('enum tstate_e'))
-		for name,value in statenames.items():
-			if value == self._tcb['task_state']:
-				return name
-		return 'UNKNOWN'
+		return next(
+			(
+				name
+				for name, value in statenames.items()
+				if value == self._tcb['task_state']
+			),
+			'UNKNOWN',
+		)
 
 	@property
 	def waiting_for(self):
@@ -216,14 +215,12 @@ class NX_task(object):
 				waitsem_holder = waitsem['holder']
 				holder = NX_task.for_tcb(waitsem_holder['htcb'])
 				if holder is not None:
-					return '{}({})'.format(waitsem.address, holder.name)
+					return f'{waitsem.address}({holder.name})'
 				else:
-					return '{}(<bad holder>)'.format(waitsem.address)
+					return f'{waitsem.address}(<bad holder>)'
 			except:
 				return 'EXCEPTION'
-		if self._state_is('TSTATE_WAIT_SIG'):
-			return 'signal'
-		return ""
+		return 'signal' if self._state_is('TSTATE_WAIT_SIG') else ""
 
 	@property
 	def is_waiting(self):
@@ -234,11 +231,13 @@ class NX_task(object):
 	@property
 	def is_runnable(self):
 		"""tests whether the task is runnable"""
-		if (self._state_is('TSTATE_TASK_PENDING') or
-			self._state_is('TSTATE_TASK_READYTORUN') or
-			self._state_is('TSTATE_TASK_RUNNING')):
-			return True
-		return False
+		return bool(
+			(
+				self._state_is('TSTATE_TASK_PENDING')
+				or self._state_is('TSTATE_TASK_READYTORUN')
+				or self._state_is('TSTATE_TASK_RUNNING')
+			)
+		)
 
 	@property
 	def file_descriptors(self):
@@ -267,10 +266,10 @@ class NX_task(object):
 		return self.__dict__['registers']
 
 	def __repr__(self):
-		return "<NX_task {}>".format(self.pid)
+		return f"<NX_task {self.pid}>"
 
 	def __str__(self):
-		return "{}:{}".format(self.pid, self.name)
+		return f"{self.pid}:{self.name}"
 
 	def showoff(self):
 		print("-------")
@@ -304,8 +303,10 @@ class NX_show_task (gdb.Command):
 	def invoke(self, arg, from_tty):
 		t = NX_task.for_pid(parse_int(arg))
 		if t is not None:
-			my_fmt = 'PID:{pid}  name:{name}  state:{state}\n'
-			my_fmt += '  stack used {stack_used} of {stack_limit}\n'
+			my_fmt = (
+				'PID:{pid}  name:{name}  state:{state}\n'
+				+ '  stack used {stack_used} of {stack_limit}\n'
+			)
 			if t.is_waiting:
 				my_fmt += '  waiting for {waiting_for}\n'
 			my_fmt += '  open files: {file_descriptors}\n'
@@ -324,7 +325,7 @@ class NX_show_tasks (gdb.Command):
 
 	def invoke(self, args, from_tty):
 		tasks = NX_task.tasks()
-		print ('Number of tasks: ' + str(len(tasks)))
+		print(f'Number of tasks: {len(tasks)}')
 		for t in tasks:
 			#t.showoff()
 			print(format(t, 'Task: {pid} {name} {state} {stack_used}/{stack_limit}'))
@@ -345,30 +346,25 @@ class NX_show_heap (gdb.Command):
 			self._allocflag = 0x80000000
 		else:
 			raise gdb.GdbError('invalid mm_allocnode_s.preceding size %u' % preceding_size)
-			self._allocnodesize = struct_mm_allocnode_s.sizeof
 
 	def _node_allocated(self, allocnode):
-		if allocnode['preceding'] & self._allocflag:
-			return True
-		return False
+		return bool(allocnode['preceding'] & self._allocflag)
 
 	def _node_size(self, allocnode):
 		return allocnode['size'] & ~self._allocflag
 
 	def _print_allocations(self, region_start, region_end):
 		if region_start >= region_end:
-			raise gdb.GdbError('heap region {} corrupt'.format(hex(region_start)))
+			raise gdb.GdbError(f'heap region {hex(region_start)} corrupt')
 		nodecount = region_end - region_start
-		print ('heap {} - {}'.format(region_start, region_end))
+		print(f'heap {region_start} - {region_end}')
 		cursor = 1
 		while cursor < nodecount:
 			allocnode = region_start[cursor]
-			if self._node_allocated(allocnode):
-				state = ''
-			else:
-				state = '(free)'
-			print( '  {} {} {}'.format(allocnode.address + self._allocnodesize,
-                                                  self._node_size(allocnode), state))
+			state = '' if self._node_allocated(allocnode) else '(free)'
+			print(
+				f'  {allocnode.address + self._allocnodesize} {self._node_size(allocnode)} {state}'
+			)
 			cursor += self._node_size(allocnode) / self._allocnodesize
 
 	def invoke(self, args, from_tty):
@@ -376,7 +372,7 @@ class NX_show_heap (gdb.Command):
 		nregions = heap['mm_nregions']
 		region_starts = heap['mm_heapstart']
 		region_ends = heap['mm_heapend']
-		print( '{} heap(s)'.format(nregions))
+		print(f'{nregions} heap(s)')
 		# walk the heaps
 		for i in range(0, nregions):
 			self._print_allocations(region_starts[i], region_ends[i])
@@ -393,15 +389,16 @@ class NX_show_interrupted_thread (gdb.Command):
 		regs = gdb.lookup_global_symbol('current_regs').value()
 		if regs == 0:
 			raise gdb.GdbError('not in interrupt context')
-		else:
-			registers = NX_register_set.with_xcpt_regs(regs)
-			my_fmt = ''
-			my_fmt += '  R0  {registers[R0]:#010x} {registers[R1]:#010x} {registers[R2]:#010x} {registers[R3]:#010x}\n'
-			my_fmt += '  R4  {registers[R4]:#010x} {registers[R5]:#010x} {registers[R6]:#010x} {registers[R7]:#010x}\n'
-			my_fmt += '  R8  {registers[R8]:#010x} {registers[R9]:#010x} {registers[R10]:#010x} {registers[R11]:#010x}\n'
-			my_fmt += '  R12 {registers[PC]:#010x}\n'
-			my_fmt += '  SP  {registers[SP]:#010x} LR {registers[LR]:#010x} PC {registers[PC]:#010x} XPSR {registers[XPSR]:#010x}\n'
-			print (format(registers, my_fmt))
+		registers = NX_register_set.with_xcpt_regs(regs)
+		my_fmt = (
+			''
+			+ '  R0  {registers[R0]:#010x} {registers[R1]:#010x} {registers[R2]:#010x} {registers[R3]:#010x}\n'
+		)
+		my_fmt += '  R4  {registers[R4]:#010x} {registers[R5]:#010x} {registers[R6]:#010x} {registers[R7]:#010x}\n'
+		my_fmt += '  R8  {registers[R8]:#010x} {registers[R9]:#010x} {registers[R10]:#010x} {registers[R11]:#010x}\n'
+		my_fmt += '  R12 {registers[PC]:#010x}\n'
+		my_fmt += '  SP  {registers[SP]:#010x} LR {registers[LR]:#010x} PC {registers[PC]:#010x} XPSR {registers[XPSR]:#010x}\n'
+		print (format(registers, my_fmt))
 
 NX_show_interrupted_thread()
 
@@ -419,7 +416,7 @@ class NX_check_tcb(gdb.Command):
 		regmap = NX_register_set.v7em_regmap
 		for reg in regmap:
 			hex_addr= hex(int(a[regmap[reg]]))
-			eval_string = 'info line *'+str(hex_addr)
+			eval_string = f'info line *{hex_addr}'
 			print(reg,": ",hex_addr,)
 NX_check_tcb()
 
@@ -428,16 +425,12 @@ class NX_tcb(object):
 		pass
 
 	def is_in(self,arg,list):
-		for i in list:
-			if arg == i:
-				return True
-		return False
+		return any(arg == i for i in list)
 
 	def find_tcb_list(self,dq_entry_t):
-		tcb_list = []
 		tcb_ptr = dq_entry_t.cast(gdb.lookup_type('struct tcb_s').pointer())
 		first_tcb = tcb_ptr.dereference()
-		tcb_list.append(first_tcb)
+		tcb_list = [first_tcb]
 		next_tcb = first_tcb['flink'].dereference()
 		while not self.is_in(parse_int(next_tcb['pid']),[parse_int(t['pid']) for t in tcb_list]):
 			tcb_list.append(next_tcb)
@@ -462,16 +455,12 @@ class NX_check_stack_order(gdb.Command):
 		super(NX_check_stack_order,self).__init__('show check_stack', gdb.COMMAND_USER)
 
 	def is_in(self,arg,list):
-		for i in list:
-			if arg == i:
-				return True
-		return False
+		return any(arg == i for i in list)
 
 	def find_tcb_list(self,dq_entry_t):
-		tcb_list = []
 		tcb_ptr = dq_entry_t.cast(gdb.lookup_type('struct tcb_s').pointer())
 		first_tcb = tcb_ptr.dereference()
-		tcb_list.append(first_tcb)
+		tcb_list = [first_tcb]
 		next_tcb = first_tcb['flink'].dereference()
 		while not self.is_in(parse_int(next_tcb['pid']),[parse_int(t['pid']) for t in tcb_list]):
 			tcb_list.append(next_tcb)
@@ -508,7 +497,7 @@ class NX_check_stack_order(gdb.Command):
 				if _dict_in[key][i] < address:
 					add_list.append(_dict_in[key][i])
 					if i == 2: # the last one is the processes stack pointer
-						name_list.append(self.check_name(key)+"_SP")
+						name_list.append(f"{self.check_name(key)}_SP")
 					else:
 						name_list.append(self.check_name(key))
 
@@ -519,25 +508,21 @@ class NX_check_stack_order(gdb.Command):
 		if isinstance(name,(list)):
 			name = name[0]
 		idx = name.find("\\")
-		newname = name[:idx]
-
-		return newname
+		return name[:idx]
 
 	def invoke(self,args,sth):
 		tcb = self.getTCB()
 		stackadresses={}
 		for t in tcb:
-			p = []
-			#print(t.name,t._tcb['stack_alloc_ptr'])
-			p.append(parse_int(t['stack_alloc_ptr']))
+			p = [parse_int(t['stack_alloc_ptr'])]
 			p.append(parse_int(t['adj_stack_ptr']))
 			p.append(self.getSPfromTask(t))
 			stackadresses[str(t['name'])] = p
 		address = int("0x30000000",0)
 		print("stack address  :  process")
-		for i in range(len(stackadresses)*3):
-			  address,name = self.find_next_stack(address,stackadresses)
-			  print(hex(address),": ",name)
+		for _ in range(len(stackadresses)*3):
+			address,name = self.find_next_stack(address,stackadresses)
+			print(hex(address),": ",name)
 
 NX_check_stack_order()
 
@@ -552,7 +537,7 @@ class NX_run_debug_util(gdb.Command):
 		print("relevant registers in ",task.name,":")
 		for reg in regmap:
 			hex_addr= hex(int(a[regmap[reg]]))
-			eval_string = 'info line *'+str(hex_addr)
+			eval_string = f'info line *{hex_addr}'
 			print(reg,": ",hex_addr,)
 
 	def getPCfromTask(self,task):
@@ -565,7 +550,7 @@ class NX_run_debug_util(gdb.Command):
 		if args == '':
 			for t in tasks:
 				self.printRegisters(t)
-				eval_str = "list *"+str(self.getPCfromTask(t))
+				eval_str = f"list *{str(self.getPCfromTask(t))}"
 				print("this is the location in code where the current threads $pc is:")
 				gdb.execute(eval_str)
 		else:
@@ -573,7 +558,7 @@ class NX_run_debug_util(gdb.Command):
 			print("tcb_nr = ",tcb_nr)
 			t = tasks[tcb_nr]
 			self.printRegisters(t)
-			eval_str = "list *"+str(self.getPCfromTask(t))
+			eval_str = f"list *{str(self.getPCfromTask(t))}"
 			print("this is the location in code where the current threads $pc is:")
 			gdb.execute(eval_str)
 
@@ -587,16 +572,12 @@ class NX_search_tcb(gdb.Command):
 		super(NX_search_tcb,self).__init__('show alltcb', gdb.COMMAND_USER)
 
 	def is_in(self,arg,list):
-		for i in list:
-			if arg == i:
-				return True
-		return False
+		return any(arg == i for i in list)
 
 	def find_tcb_list(self,dq_entry_t):
-		tcb_list = []
 		tcb_ptr = dq_entry_t.cast(gdb.lookup_type('struct tcb_s').pointer())
 		first_tcb = tcb_ptr.dereference()
-		tcb_list.append(first_tcb)
+		tcb_list = [first_tcb]
 		next_tcb = first_tcb['flink'].dereference()
 		while not self.is_in(parse_int(next_tcb['pid']),[parse_int(t['pid']) for t in tcb_list]):
 			tcb_list.append(next_tcb)
@@ -617,10 +598,10 @@ class NX_search_tcb(gdb.Command):
 		tasks_filt = {}
 		for t in tasks:
 			pid = parse_int(t['pid'])
-			if not pid in tasks_filt.keys():
+			if pid not in tasks_filt:
 				tasks_filt[pid] = t['name']
 		print('{num_t} Tasks found:'.format(num_t = len(tasks_filt)))
-		for pid in tasks_filt.keys():
+		for pid in tasks_filt:
 			print("PID: ",pid," ",tasks_filt[pid])
 
 NX_search_tcb()
@@ -639,7 +620,7 @@ class NX_my_bt(gdb.Command):
 		'''
 		read memory at addr and return nr
 		'''
-		str_to_eval = "x/x "+hex(addr)
+		str_to_eval = f"x/x {hex(addr)}"
 		resp = gdb.execute(str_to_eval,to_string = True)
 		idx = resp.find('\t')
 		return int(resp[idx:],16)
@@ -648,18 +629,15 @@ class NX_my_bt(gdb.Command):
 		lower_bound = int("08004000",16)
 		upper_bound = int("080ae0c0",16)
 		#print(lower_bound," ",val," ",upper_bound)
-		if val>lower_bound and val<upper_bound:
-			return True
-		else:
-			return False
+		return val>lower_bound and val<upper_bound
 	def get_tcb_from_address(self,addr):
 		addr_value = gdb.Value(addr)
 		tcb_ptr = addr_value.cast(gdb.lookup_type('struct tcb_s').pointer())
 		return tcb_ptr.dereference()
 
 	def resolve_file_line_func(self,addr,stack_percentage):
-		gdb.write(str(round(stack_percentage,2))+":")
-		str_to_eval = "info line *"+hex(addr)
+		gdb.write(f"{str(round(stack_percentage, 2))}:")
+		str_to_eval = f"info line *{hex(addr)}"
 		#gdb.execute(str_to_eval)
 		res = gdb.execute(str_to_eval,to_string = True)
 		# get information from results string:

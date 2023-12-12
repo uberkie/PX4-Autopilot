@@ -54,7 +54,7 @@ import json
 
 def save_compressed(filename):
     #create lzma compressed version
-    xz_filename=filename+'.xz'
+    xz_filename = f'{filename}.xz'
     with lzma.open(xz_filename, 'wt', preset=9) as f:
         with open(filename, 'r') as content_file:
             f.write(content_file.read())
@@ -122,8 +122,8 @@ def main():
     parser = srcparser.SourceParser()
 
     # Scan directories, and parse the files
-    if (args.verbose):
-        print("Scanning source path " + str(args.src_path))
+    if args.verbose:
+        print(f"Scanning source path {str(args.src_path)}")
 
     if not scanner.ScanDir(args.src_path, parser):
         sys.exit(1)
@@ -156,7 +156,7 @@ def main():
     # Output to XML file
     if args.xml:
         if args.verbose:
-            print("Creating XML file " + args.xml)
+            print(f"Creating XML file {args.xml}")
         out = xmlout.XMLOutput(param_groups, args.board)
         out.Save(args.xml)
         output_files.append(args.xml)
@@ -164,7 +164,7 @@ def main():
     # Output to Markdown/HTML tables
     if args.markdown:
         if args.verbose:
-            print("Creating markdown file " + args.markdown)
+            print(f"Creating markdown file {args.markdown}")
         out = markdownout.MarkdownTablesOutput(param_groups)
         out.Save(args.markdown)
         output_files.append(args.markdown)
@@ -172,7 +172,7 @@ def main():
     # Output to JSON file
     if args.json:
         if args.verbose:
-            print("Creating Json file " + args.json)
+            print(f"Creating Json file {args.json}")
         cur_dir = os.path.dirname(os.path.realpath(__file__))
         out = jsonout.JsonOutput(param_groups, args.board,
                                os.path.join(cur_dir, args.inject_xml))
@@ -182,7 +182,7 @@ def main():
     if args.compress:
         for f in output_files:
             if args.verbose:
-                print("Compressing file " + f)
+                print(f"Compressing file {f}")
             save_compressed(f)
             
 

@@ -86,20 +86,35 @@ class InAirDetector(object):
         landings = [landing + 1 for landing in landings]
 
         assert len(landings) == len(take_offs), 'InAirDetector: different number of take offs' \
-                                                ' and landings.'
+                                                    ' and landings.'
 
-        in_air = []
-        for take_off, landing in zip(take_offs, landings):
-            if (self._vehicle_land_detected['timestamp'][landing] / 1e6 -
-                    self._in_air_margin_seconds) - \
-                    (self._vehicle_land_detected['timestamp'][take_off] / 1e6 +
-                     self._in_air_margin_seconds) >= self._min_flight_time_seconds:
-                in_air.append(Airtime(
-                    take_off=(self._vehicle_land_detected['timestamp'][take_off] -
-                              self._ulog.start_timestamp) / 1.0e6 + self._in_air_margin_seconds,
-                    landing=(self._vehicle_land_detected['timestamp'][landing] -
-                             self._ulog.start_timestamp) / 1.0e6 - self._in_air_margin_seconds))
-        if len(in_air) == 0:
+        in_air = [
+            Airtime(
+                take_off=(
+                    self._vehicle_land_detected['timestamp'][take_off]
+                    - self._ulog.start_timestamp
+                )
+                / 1.0e6
+                + self._in_air_margin_seconds,
+                landing=(
+                    self._vehicle_land_detected['timestamp'][landing]
+                    - self._ulog.start_timestamp
+                )
+                / 1.0e6
+                - self._in_air_margin_seconds,
+            )
+            for take_off, landing in zip(take_offs, landings)
+            if (
+                self._vehicle_land_detected['timestamp'][landing] / 1e6
+                - self._in_air_margin_seconds
+            )
+            - (
+                self._vehicle_land_detected['timestamp'][take_off] / 1e6
+                + self._in_air_margin_seconds
+            )
+            >= self._min_flight_time_seconds
+        ]
+        if not in_air:
             print('InAirDetector: no airtime detected.')
 
         return in_air
@@ -149,16 +164,20 @@ class InAirDetector(object):
             print('InAirDetector: {:s} not found in log.'.format(dataset))
             return []
 
-        if self._in_air:
-            airtime = np.where(((data['timestamp'] - self._ulog.start_timestamp) / 1.0e6 >=
-                                self._in_air[0].take_off) & (
-                                    (data['timestamp'] - self._ulog.start_timestamp) /
-                                    1.0e6 < self._in_air[-1].landing))[0]
-
-        else:
-            airtime = []
-
-        return airtime
+        return (
+            np.where(
+                (
+                    (data['timestamp'] - self._ulog.start_timestamp) / 1.0e6
+                    >= self._in_air[0].take_off
+                )
+                & (
+                    (data['timestamp'] - self._ulog.start_timestamp) / 1.0e6
+                    < self._in_air[-1].landing
+                )
+            )[0]
+            if self._in_air
+            else []
+        )
 
     def get_airtime(self, dataset) -> list:
         """

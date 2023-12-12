@@ -77,7 +77,7 @@ class ManualInput(object):
             pos.timestamp = time.secs * 1e6 + time.nsecs / 1000
             self.pub_mcsp.publish(pos)
             rate.sleep()
-            count = count + 1
+            count += 1
 
         pos.r = 1
         count = 0
@@ -87,7 +87,7 @@ class ManualInput(object):
             pos.timestamp = time.secs * 1e6 + time.nsecs / 1000
             self.pub_mcsp.publish(pos)
             rate.sleep()
-            count = count + 1
+            count += 1
 
     def posctl(self):
         rate = rospy.Rate(10) # 10hz
@@ -112,7 +112,7 @@ class ManualInput(object):
             pos.timestamp = time.secs * 1e6 + time.nsecs / 1000
             self.pub_mcsp.publish(pos)
             rate.sleep()
-            count = count + 1
+            count += 1
 
 
     def offboard_attctl(self):
@@ -143,7 +143,7 @@ class ManualInput(object):
             mode.timestamp = time.secs * 1e6 + time.nsecs / 1000
             self.pub_off.publish(mode)
             rate.sleep()
-            count = count + 1
+            count += 1
 
         # triggers offboard
         pos = manual_control_setpoint()
@@ -165,5 +165,5 @@ class ManualInput(object):
             pos.timestamp = time.secs * 1e6 + time.nsecs / 1000
             self.pub_mcsp.publish(pos)
             rate.sleep()
-            count = count + 1
+            count += 1
 

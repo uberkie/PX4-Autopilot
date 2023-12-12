@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """ Script to generate Serial (UART) parameters and the ROMFS startup script """
 
+
 import argparse
 import os
 import sys
@@ -8,7 +9,7 @@ import sys
 try:
     from jinja2 import Environment, FileSystemLoader
 except ImportError as e:
-    print("Failed to import jinja2: " + str(e))
+    print(f"Failed to import jinja2: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user jinja2")
@@ -18,7 +19,7 @@ except ImportError as e:
 try:
     import yaml
 except ImportError as e:
-    print("Failed to import yaml: " + str(e))
+    print(f"Failed to import yaml: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user pyyaml")
@@ -256,7 +257,7 @@ for serial_command in serial_commands:
         # check if a port dependency is specified
         if 'depends_on_port' in port_config:
             depends_on_port = port_config['depends_on_port']
-            if not any(p['tag'] == depends_on_port for p in serial_devices):
+            if all(p['tag'] != depends_on_port for p in serial_devices):
                 if verbose:
                     print("Skipping {:} (missing dependent port)".format(port_param_name))
                 continue
@@ -273,21 +274,21 @@ for serial_command in serial_commands:
                 if default_port_str not in serial_ports:
                     raise Exception("Default Port {:} not found for {:}".format(default_port_str, serial_command['label']))
 
-                if default_port_str in dict(board_ports).keys():
+                if default_port_str in dict(board_ports):
                     default_port = serial_ports[default_port_str]['index']
 
 
         commands.append({
-            'command': serial_command['command'],
-            'label': serial_command['label'],
-            'instance': i,
-            'multi_instance': num_instances > 1,
-            'port_param_name': port_param_name,
-            'default_port': default_port,
-            'param_group': port_config['group'],
-            'description_extended': port_config.get('description_extended', ''),
-			'supports_networking': serial_command.get('supports_networking', False)
-            })
+        'command': serial_command['command'],
+        'label': serial_command['label'],
+        'instance': i,
+        'multi_instance': num_instances > 1,
+        'port_param_name': port_param_name,
+        'default_port': default_port,
+        'param_group': port_config['group'],
+        'description_extended': port_config.get('description_extended', ''),
+        'supports_networking': serial_command.get('supports_networking', False)
+        })
 
 if verbose:
     print("Serial Devices: {:}".format(serial_devices))
@@ -305,7 +306,7 @@ if rc_serial_output_dir is not None:
     rc_serial_port_output_file = os.path.join(rc_serial_output_dir, "rc.serial_port")
 
     if verbose: print("Generating {:}".format(rc_serial_output_file))
-    if len(serial_devices) == 0:
+    if not serial_devices:
         # if the board has no UARTs, create an empty rc file
         open(rc_serial_output_file, 'w').close()
     else:

@@ -2,6 +2,7 @@
 """ Script to generate actuators.json metadata from module.yaml config file(s)
 """
 
+
 import argparse
 import lzma #to create .xz file
 import json
@@ -13,7 +14,7 @@ from output_groups_from_timer_config import get_timer_groups, get_output_groups
 try:
     import yaml
 except ImportError as e:
-    print("Failed to import yaml: " + str(e))
+    print(f"Failed to import yaml: {str(e)}")
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user pyyaml")
@@ -51,7 +52,7 @@ output_functions_file = os.path.join(root_dir,"src/lib/mixer_module/output_funct
 
 def save_compressed(filename):
     #create lzma compressed version
-    xz_filename=filename+'.xz'
+    xz_filename = f'{filename}.xz'
     with lzma.open(xz_filename, 'wt', preset=9) as f:
         with open(filename, 'r') as content_file:
             f.write(content_file.read())
@@ -85,29 +86,32 @@ for group_key in output_functions:
         function_name_label = function_name.replace('_', ' ')
         if isinstance(group[function_name], int):
             add_function(functions, group[function_name], function_name_label)
-        elif not 'count' in group[function_name]:
+        elif 'count' not in group[function_name]:
             add_function(functions, group[function_name]['start'], function_name_label, group[function_name])
         else:
             start = group[function_name]['start']
             count = group[function_name]['count']
             for i in range(count):
-                add_function(functions, start+i, function_name_label+' '+str(i+1), group[function_name])
+                add_function(
+                    functions,
+                    start + i,
+                    f'{function_name_label} {str(i + 1)}',
+                    group[function_name],
+                )
 
 # outputs
 outputs = []
 
 def process_module_name(module_name):
     if module_name == '${PWM_MAIN_OR_AUX}':
-        if board_with_io: return 'PWM AUX'
-        return 'PWM MAIN'
+        return 'PWM AUX' if board_with_io else 'PWM MAIN'
     if '${' in module_name:
         raise Exception('unhandled variable in {:}'.format(module_name))
     return module_name
 
 def process_param_prefix(param_prefix):
     if param_prefix == '${PWM_MAIN_OR_AUX}':
-        if board_with_io: return 'PWM_AUX'
-        return 'PWM_MAIN'
+        return 'PWM_AUX' if board_with_io else 'PWM_MAIN'
     if '${' in param_prefix:
         raise Exception('unhandled variable in {:}'.format(param_prefix))
     return param_prefix
@@ -116,17 +120,15 @@ def process_channel_label(module_name, channel_label, no_prefix):
     if channel_label == '${PWM_MAIN_OR_AUX_CAP}':
         return 'CAP'
     if channel_label == '${PWM_MAIN_OR_AUX}':
-        if board_with_io: return 'AUX'
-        return 'MAIN'
+        return 'AUX' if board_with_io else 'MAIN'
     if '${' in channel_label:
         raise Exception('unhandled variable in {:}'.format(channel_label))
-    if no_prefix: return channel_label
     return channel_label
 
 def get_actuator_output(yaml_config, output_functions, timer_config_file, verbose):
     """ parse the actuator_output section from the yaml config file
     """
-    if not 'actuator_output' in yaml_config:
+    if 'actuator_output' not in yaml_config:
         return None
 
 
@@ -219,10 +221,12 @@ def get_actuator_output(yaml_config, output_functions, timer_config_file, verbos
         instance_start_label = group.get('instance_start_label', instance_start)
         channels = []
         for channel in range(num_channels):
-            channels.append({
-                'label': channel_label + ' ' +str(channel+instance_start_label),
-                'param-index': channel+instance_start
-                })
+            channels.append(
+                {
+                    'label': f'{channel_label} {str(channel + instance_start_label)}',
+                    'param-index': channel + instance_start,
+                }
+            )
         subgroup['channels'] = channels
 
         if 'group_label' in group:
@@ -247,29 +251,27 @@ def get_actuator_output(yaml_config, output_functions, timer_config_file, verbos
 
             if key in standard_params or key == 'function':
                 param = {
-                        'label': label,
-                        'name': param_prefix+'_'+param_suffix+'${i}',
-                        'function': key,
-                    }
+                    'label': label,
+                    'name': f'{param_prefix}_{param_suffix}' + '${i}',
+                    'function': key,
+                }
                 if advanced: param['advanced'] = True
                 if show_if: param['show-if'] = show_if
                 per_channel_params.append(param)
 
 
         param = {
-                'label': 'Rev Range\n(for Servos)',
-                'name': param_prefix+'_REV',
-                'index-offset': -1,
-                'show-as': 'bitset',
-            }
+            'label': 'Rev Range\n(for Servos)',
+            'name': f'{param_prefix}_REV',
+            'index-offset': -1,
+            'show-as': 'bitset',
+        }
         per_channel_params.append(param)
 
         custom_params = group.get('custom_params', [])
         for custom_param in custom_params:
             # Simply pulls all custom params, assuming they are valid ones
-            param = {
-                'name': param_prefix+'_'+custom_param['name'],
-            }
+            param = {'name': f'{param_prefix}_' + custom_param['name']}
             # TODO: check and match the custom params in output_groups with module-level parameters
             del custom_param['name']
             for param_key in custom_param:
@@ -292,7 +294,7 @@ def get_actuator_output(yaml_config, output_functions, timer_config_file, verbos
 # Mixers
 mixers = None
 def get_mixers(yaml_config, output_functions, verbose):
-    if not 'mixer' in yaml_config:
+    if 'mixer' not in yaml_config:
         return None
 
     actuator_types = {}
@@ -320,17 +322,18 @@ def get_mixers(yaml_config, output_functions, verbose):
         if values.get('reversible', False):
             actuator_type['values']['reversible'] = True
 
-        # per item params
-        per_item_params = []
-        for per_item_param in actuator_type_conf.get('per_item_parameters', []):
-            per_item_params.append({k.replace('_','-'): v for k, v in per_item_param.items()})
-        if len(per_item_params) > 0:
+        if per_item_params := [
+            {k.replace('_', '-'): v for k, v in per_item_param.items()}
+            for per_item_param in actuator_type_conf.get(
+                'per_item_parameters', []
+            )
+        ]:
             actuator_type['per-item-parameters'] = per_item_params
 
         actuator_types[actuator_type_key] = actuator_type
 
     if verbose:
-        print('Actuator types: {}'.format(actuator_types))
+        print(f'Actuator types: {actuator_types}')
 
     config = []
     yaml_mixer_config = yaml_config['mixer']['config']
@@ -338,7 +341,7 @@ def get_mixers(yaml_config, output_functions, verbose):
     types = yaml_mixer_config['types']
     for type_index in types:
         current_type = types[type_index]
-        option = select_param + '==' + str(type_index)
+        option = f'{select_param}=={str(type_index)}'
         mixer_config = {
                 'option': option,
                 'help-url': 'https://docs.px4.io/main/en/config/actuators.html',
@@ -354,18 +357,20 @@ def get_mixers(yaml_config, output_functions, verbose):
                 }
             # sanity check that actuator type exists
             if actuator_conf['actuator_type'] not in actuator_types:
-                raise Exception('actuator type "{}" does not exist (valid: {})'.format(actuator_conf['actuator_type'], actuator_types.keys()))
+                raise Exception(
+                    f"""actuator type "{actuator_conf['actuator_type']}" does not exist (valid: {actuator_types.keys()})"""
+                )
 
             if 'group_label' in actuator_conf:
                 actuator['group-label'] = actuator_conf['group_label']
+            elif actuator_conf['actuator_type'] == 'motor':
+                actuator['group-label'] = 'Motors'
+            elif actuator_conf['actuator_type'] == 'servo':
+                actuator['group-label'] = 'Servos'
             else:
-                # infer from actuator type
-                if actuator_conf['actuator_type'] == 'motor':
-                    actuator['group-label'] = 'Motors'
-                elif actuator_conf['actuator_type'] == 'servo':
-                    actuator['group-label'] = 'Servos'
-                else:
-                    raise Exception('Missing group label for actuator type "{}"'.format(actuator_conf['actuator_type']))
+                raise Exception(
+                    f"""Missing group label for actuator type "{actuator_conf['actuator_type']}\""""
+                )
 
             if 'count' in actuator_conf: # possibly dynamic size
                 actuator['count'] = actuator_conf['count']
@@ -397,8 +402,13 @@ def get_mixers(yaml_config, output_functions, verbose):
                         },
                         ])
                 if 'extra' in per_item_params:
-                    for extra_param in per_item_params['extra']:
-                        params.append({k.replace('_','-'): v for k, v in extra_param.items()})
+                    params.extend(
+                        {
+                            k.replace('_', '-'): v
+                            for k, v in extra_param.items()
+                        }
+                        for extra_param in per_item_params['extra']
+                    )
                 actuator['per-item-parameters'] = params
                 if 'item_label_prefix' in actuator_conf:
                     actuator['item-label-prefix'] = actuator_conf['item_label_prefix']
@@ -433,10 +443,10 @@ def get_mixers(yaml_config, output_functions, verbose):
                         },
                     ]
 
-            # actuator parameters
-            parameters = []
-            for param in actuator_conf.get('parameters', []):
-                parameters.append({k.replace('_','-'): v for k, v in param.items()})
+            parameters = [
+                {k.replace('_', '-'): v for k, v in param.items()}
+                for param in actuator_conf.get('parameters', [])
+            ]
             actuator['parameters'] = parameters
 
             actuators.append(actuator)
@@ -445,30 +455,29 @@ def get_mixers(yaml_config, output_functions, verbose):
         config.append(mixer_config)
 
     if verbose:
-        print('Mixer configs: {}'.format(config))
+        print(f'Mixer configs: {config}')
 
-    rules = []
-    for rule in yaml_config['mixer'].get('rules', []):
-        rules.append({k.replace('_','-'): v for k, v in rule.items()})
-
+    rules = [
+        {k.replace('_', '-'): v for k, v in rule.items()}
+        for rule in yaml_config['mixer'].get('rules', [])
+    ]
     if verbose:
-        print('Mixer rules: {}'.format(rules))
+        print(f'Mixer rules: {rules}')
 
-    mixers = {
-            'actuator-types': actuator_types,
-            'config': config,
-            'rules': rules,
-        }
-    return mixers
+    return {
+        'actuator-types': actuator_types,
+        'config': config,
+        'rules': rules,
+    }
 
 
 for yaml_file in args.config_files:
     yaml_config = load_yaml_file(yaml_file)
 
     try:
-        actuator_output = get_actuator_output(yaml_config,
-                output_functions, timer_config_file, verbose)
-        if actuator_output:
+        if actuator_output := get_actuator_output(
+            yaml_config, output_functions, timer_config_file, verbose
+        ):
             outputs.append(actuator_output)
 
         parsed_mixers = get_mixers(yaml_config, output_functions, verbose)

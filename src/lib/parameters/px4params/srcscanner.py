@@ -14,8 +14,8 @@ class SourceScanner(object):
         Scans provided path and passes all found contents to the parser using
         parser.Parse method.
         """
-        extensions1 = tuple([".h"])
-        extensions2 = tuple([".c"])
+        extensions1 = (".h", )
+        extensions2 = (".c", )
         for srcdir in srcdirs:
             for filename in os.listdir(srcdir):
                 if filename.endswith(extensions1):
@@ -40,6 +40,5 @@ class SourceScanner(object):
                 contents = f.read()
             except:
                 contents = ''
-                print('Failed reading file: %s, skipping content.' % path)
-                pass
+                print(f'Failed reading file: {path}, skipping content.')
         return parser.Parse(contents)

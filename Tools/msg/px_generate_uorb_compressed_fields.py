@@ -133,13 +133,13 @@ unsigned orb_compressed_message_formats_size()
 
 
 def c_encode(s, encoding='ascii'):
-    result = ''
-    for c in s:
-        if not (32 <= ord(c) < 127) or c in ('\\', '"'):
-            result += '\\%03o' % ord(c)
-        else:
-            result += c
-    return '"' + result + '"'
+    result = ''.join(
+        '\\%03o' % ord(c)
+        if not (32 <= ord(c) < 127) or c in ('\\', '"')
+        else c
+        for c in s
+    )
+    return f'"{result}"'
 
 
 def write_fields_to_hpp_file(file_name: str, definitions: dict, window_length: int, lookahead_length: int,

@@ -38,19 +38,19 @@ class JsonOutput():
         }
 
         schema_map = {
-                        "short_desc": "shortDesc",
-			"long_desc": "longDesc",
-			"unit": "units",
-			}
+        "short_desc": "shortDesc",
+        "long_desc": "longDesc",
+        "unit": "units",
+        }
         schema_map_typed = {
-			"min": "min",
-			"max": "max",
-			"increment": "increment",
-			}
+        "min": "min",
+        "max": "max",
+        "increment": "increment",
+        }
         schema_map_fix_type = {
-			"reboot_required": ("rebootRequired", bool),
-			"decimal": ("decimalPlaces", int),
-			}
+        "reboot_required": ("rebootRequired", bool),
+        "decimal": ("decimalPlaces", int),
+        }
         allowed_types = { "Uint8", "Int8", "Uint16", "Int16", "Uint32", "Int32", "Float"}
 
         last_param_name = ""
@@ -60,8 +60,7 @@ class JsonOutput():
 
             def get_typed_value(value: str, type_name: str):
                 if type_name == 'Float': return float(value)
-                if type_name == 'Int32': return int(value)
-                return value
+                return int(value) if type_name == 'Int32' else value
 
             for param in group.GetParams():
                 if (last_param_name == param.GetName() and not board_specific_param_set) or last_param_name != param.GetName():
@@ -69,7 +68,7 @@ class JsonOutput():
                     curr_param['name'] = param.GetName()
                     type_name = param.GetType().capitalize()
                     curr_param['type'] = type_name
-                    if not type_name in allowed_types:
+                    if type_name not in allowed_types:
                         print("Error: %s type not supported: curr_param['type']" % (curr_param['name'],curr_param['type']) )
                         sys.Exit(1)
                     curr_param['default'] = get_typed_value(param.GetDefault(), type_name)
@@ -102,7 +101,7 @@ class JsonOutput():
                             elif code in schema_map_fix_type:
                                 curr_param[schema_map_fix_type[code][0]] = schema_map_fix_type[code][1](value)
                             else:
-                                print('ERROR: Field not in json schema: %s' % code)
+                                print(f'ERROR: Field not in json schema: {code}')
                                 sys.exit(1)
 
 
@@ -112,7 +111,7 @@ class JsonOutput():
                 enum_codes=param.GetEnumCodes() or '' # Gets numerical values for parameter.
                 if enum_codes:
                     enum_codes=sorted(enum_codes,key=float)
-                    codes_list=list()
+                    codes_list = []
                     for item in enum_codes:
                         code_dict=dict()
                         code_dict['value']=get_typed_value(item, type_name)
@@ -127,7 +126,7 @@ class JsonOutput():
 
 
                 if len(param.GetBitmaskList()) > 0:
-                    bitmasks_list=list()
+                    bitmasks_list = []
                     for index in param.GetBitmaskList():
                         bitmask_dict=dict()
                         bitmask_dict['index']=int(index)

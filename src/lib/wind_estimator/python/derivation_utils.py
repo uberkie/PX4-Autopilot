@@ -49,11 +49,25 @@ def quat_to_rot(q):
     q2 = q[2]
     q3 = q[3]
 
-    Rot = geo.M33([[q0**2 + q1**2 - q2**2 - q3**2, 2*(q1*q2 - q0*q3), 2*(q1*q3 + q0*q2)],
-                  [2*(q1*q2 + q0*q3), q0**2 - q1**2 + q2**2 - q3**2, 2*(q2*q3 - q0*q1)],
-                   [2*(q1*q3-q0*q2), 2*(q2*q3 + q0*q1), q0**2 - q1**2 - q2**2 + q3**2]])
-
-    return Rot
+    return geo.M33(
+        [
+            [
+                q0**2 + q1**2 - q2**2 - q3**2,
+                2 * (q1 * q2 - q0 * q3),
+                2 * (q1 * q3 + q0 * q2),
+            ],
+            [
+                2 * (q1 * q2 + q0 * q3),
+                q0**2 - q1**2 + q2**2 - q3**2,
+                2 * (q2 * q3 - q0 * q1),
+            ],
+            [
+                2 * (q1 * q3 - q0 * q2),
+                2 * (q2 * q3 + q0 * q1),
+                q0**2 - q1**2 - q2**2 + q3**2,
+            ],
+        ]
+    )
 
 def sign_no_zero(x) -> T.Scalar:
     """
@@ -78,9 +92,9 @@ def generate_px4_function(function_name, output_names):
             output_dir="generated",
             skip_directory_nesting=True)
 
-    print("Files generated in {}:\n".format(metadata.output_dir))
+    print(f"Files generated in {metadata.output_dir}:\n")
     for f in metadata.generated_files:
-        print("  |- {}".format(os.path.relpath(f, metadata.output_dir)))
+        print(f"  |- {os.path.relpath(f, metadata.output_dir)}")
 
     # Replace cstdlib and Eigen functions by PX4 equivalents
     with fileinput.FileInput(os.path.abspath(metadata.generated_files[0]), inplace=True, backup='.bak') as file:
@@ -91,7 +105,7 @@ def generate_px4_function(function_name, output_names):
             line = line.replace("matrix/Dense", "matrix/math.hpp")
 
             # don't allow underscore + uppercase identifier naming (always reserved for any use)
-            line = re.sub(r'_([A-Z])', lambda x: '_' + x.group(1).lower(), line)
+            line = re.sub(r'_([A-Z])', lambda x: f'_{x.group(1).lower()}', line)
 
             print(line, end='')
 

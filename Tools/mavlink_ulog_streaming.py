@@ -7,6 +7,7 @@ Stream ULog data over MAVLink.
 """
 
 
+
 from __future__ import print_function
 import sys, select, os
 import datetime
@@ -18,7 +19,7 @@ import signal
 try:
     from pymavlink import mavutil
 except ImportError as e:
-    print("Failed to import pymavlink: " + str(e))
+    print(f"Failed to import pymavlink: {str(e)}")
     print("")
     print("You may need to install it with:")
     print("    pip3 install --user pymavlink")
@@ -37,7 +38,7 @@ class MavlinkLogStreaming():
         self.baudrate = 0
         self._debug = debug
         self.buf = ''
-        self.debug("Connecting with MAVLink to %s ..." % portname)
+        self.debug(f"Connecting with MAVLink to {portname} ...")
         self.mav = mavutil.mavlink_connection(portname, autoreconnect=True, baud=baudrate)
         self.mav.wait_heartbeat()
         self.debug("HEARTBEAT OK\n")
@@ -129,14 +130,13 @@ class MavlinkLogStreaming():
 
             if m.get_type() == 'COMMAND_ACK':
                 if m.command == mavutil.mavlink.MAV_CMD_LOGGING_START and \
-                        not self.got_header_section:
-                    if m.result == 0:
-                        self.logging_started = True
-                        print('Logging started. Waiting for Header...')
-                    else:
+                            not self.got_header_section:
+                    if m.result != 0:
                         raise Exception('Logging start failed', m.result)
+                    self.logging_started = True
+                    print('Logging started. Waiting for Header...')
                 elif m.command == mavutil.mavlink.MAV_CMD_LOGGING_STOP and \
-                        m.result == mavutil.mavlink.MAV_RESULT_ACCEPTED:
+                            m.result == mavutil.mavlink.MAV_RESULT_ACCEPTED:
                     raise LoggingCompleted()
                 return None, 0, 0
 
@@ -163,7 +163,7 @@ class MavlinkLogStreaming():
                 return m.data[:m.length], m.first_message_offset, num_drops
 
             else:
-                self.debug('dup/reordered message '+str(m.sequence))
+                self.debug(f'dup/reordered message {str(m.sequence)}')
 
         return None, 0, 0
 
@@ -177,13 +177,14 @@ class MavlinkLogStreaming():
             return False, 0
         if seq > self.last_sequence:
             # account for wrap-arounds, sequence is 2 bytes
-            if seq - self.last_sequence > (1<<15): # assume reordered
-                return False, 0
-            return True, seq - self.last_sequence - 1
-        else:
-            if self.last_sequence - seq > (1<<15):
-                return True, (1<<16) - self.last_sequence - 1 + seq
-            return False, 0
+            return (
+                (False, 0)
+                if seq - self.last_sequence > (1 << 15)
+                else (True, seq - self.last_sequence - 1)
+            )
+        if self.last_sequence - seq > (1<<15):
+            return True, (1<<16) - self.last_sequence - 1 + seq
+        return False, 0
 
 
     def process_streamed_ulog_data(self, data, first_msg_start, num_drops):
@@ -191,12 +192,12 @@ class MavlinkLogStreaming():
         if not self.got_ulog_header: # the first 16 bytes need special treatment
             if len(data) < 16: # that's never the case anyway
                 raise Exception('first received message too short')
-            self.file.write(bytearray(data[0:16]))
+            self.file.write(bytearray(data[:16]))
             data = data[16:]
             self.got_ulog_header = True
 
         if self.got_header_section and num_drops > 0:
-            if num_drops > 25: num_drops = 25
+            num_drops = min(num_drops, 25)
             # write a dropout message. We don't really know the actual duration,
             # so just use the number of drops * 10 ms
             self.file.write(bytearray([ 2, 0, 79, num_drops*10, 0 ]))
@@ -252,7 +253,7 @@ def main():
         filename = args.output
     print('Output file name: {:}'.format(filename))
 
-    if args.port == None:
+    if args.port is None:
         serial_list = mavutil.auto_detect_serial(preferred_list=['*FTDI*',
             "*Arduino_Mega_2560*", "*3D_Robotics*", "*USB_to_UART*", '*PX4*', '*FMU*'])
 
